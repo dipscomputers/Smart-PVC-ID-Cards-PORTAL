@@ -1,0 +1,6 @@
+{
+  "name": "महाराष्ट्र शेतकरी नोंदणी अर्ज & PDF जनरेटर",
+  "description": "Farmer Registration Application Form with PDF auto-fill extraction, Marathi-English bilingual support, and official PDF generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
