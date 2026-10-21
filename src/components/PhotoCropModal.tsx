@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, ZoomIn, ZoomOut, RotateCw, Check, Crop } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, Check, Crop, RotateCw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RefreshCw, Sun, Sliders } from 'lucide-react';
 
 interface PhotoCropModalProps {
   isOpen: boolean;
@@ -8,13 +8,16 @@ interface PhotoCropModalProps {
   onCropComplete: (croppedDataUrl: string) => void;
 }
 
+type AspectRatioMode = 'photo' | 'signature' | 'square';
+
 export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
   isOpen,
   onClose,
   imageSrc,
   onCropComplete,
 }) => {
-  const [zoom, setZoom] = useState<number>(1);
+  const [aspectMode, setAspectMode] = useState<AspectRatioMode>('photo');
+  const [zoom, setZoom] = useState<number>(1.0);
   const [rotation, setRotation] = useState<number>(0);
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -23,15 +26,22 @@ export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
-  // Load image
+  // Target dimensions based on selected aspect mode
+  const getTargetDimensions = useCallback(() => {
+    if (aspectMode === 'signature') return { targetW: 512, targetH: 128, label: '२५६×६४ स्वाक्षरी' };
+    if (aspectMode === 'square') return { targetW: 400, targetH: 400, label: '१:१ चौरस' };
+    return { targetW: 480, targetH: 606, label: '१६०×२०२ फोटो' };
+  }, [aspectMode]);
+
+  // Load image into canvas
   useEffect(() => {
-    if (!imageSrc) return;
+    if (!imageSrc || !isOpen) return;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = imageSrc;
     img.onload = () => {
       imgRef.current = img;
-      setZoom(1);
+      setZoom(1.0);
       setRotation(0);
       setOffset({ x: 0, y: 0 });
       drawPreview();
@@ -46,37 +56,28 @@ export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Passport aspect ratio 3:4 (High-Resolution 600 x 800 for crisp PVC print)
-    const targetW = 600;
-    const targetH = 800;
+    const { targetW, targetH } = getTargetDimensions();
     canvas.width = targetW;
     canvas.height = targetH;
 
-    // Background fill (crisp white for photo backing)
+    // Background fill
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, targetW, targetH);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    // Save state
     ctx.save();
 
-    // Move to center of canvas + offset
+    // Move to center + offset
     ctx.translate(targetW / 2 + offset.x, targetH / 2 + offset.y);
-
-    // Rotate
     ctx.rotate((rotation * Math.PI) / 180);
-
-    // Scale
     ctx.scale(zoom, zoom);
 
-    // Calculate dimensions to fit nicely in 3:4 frame without over-zoom
     const imgAspect = img.width / img.height;
-    const frameAspect = targetW / targetH; // 0.75
+    const frameAspect = targetW / targetH;
     let renderW = targetW;
     let renderH = targetH;
 
-    // Natural fit: cover the frame edge-to-edge without excessive zoom
     if (imgAspect > frameAspect) {
       renderH = targetH;
       renderW = targetH * imgAspect;
@@ -85,30 +86,30 @@ export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
       renderH = targetW / imgAspect;
     }
 
-    // Draw centered
     ctx.drawImage(img, -renderW / 2, -renderH / 2, renderW, renderH);
-
-    // Restore state
     ctx.restore();
-  }, [offset, rotation, zoom]);
+  }, [offset, rotation, zoom, getTargetDimensions]);
 
   useEffect(() => {
-    drawPreview();
-  }, [drawPreview]);
+    if (isOpen) {
+      drawPreview();
+    }
+  }, [drawPreview, isOpen, aspectMode]);
 
-  // Center face handler
-  const handleCenterFace = () => {
-    setOffset({ x: 0, y: 0 });
-  };
+  // Directional Shifting
+  const handleShiftUp = () => setOffset((prev) => ({ ...prev, y: prev.y - 25 }));
+  const handleShiftDown = () => setOffset((prev) => ({ ...prev, y: prev.y + 25 }));
+  const handleShiftLeft = () => setOffset((prev) => ({ ...prev, x: prev.x - 25 }));
+  const handleShiftRight = () => setOffset((prev) => ({ ...prev, x: prev.x + 25 }));
 
   // Reset all adjustments
   const handleReset = () => {
-    setZoom(1);
+    setZoom(1.0);
     setRotation(0);
     setOffset({ x: 0, y: 0 });
   };
 
-  // Mouse & Touch Pan Handlers (Scaled to canvas coordinate space)
+  // Mouse & Touch Dragging
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
@@ -116,8 +117,10 @@ export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
-    const dx = (e.clientX - dragStart.x) * (600 / 210);
-    const dy = (e.clientY - dragStart.y) * (800 / 280);
+    const { targetW } = getTargetDimensions();
+    const scaleFactor = (targetW / 240) / Math.max(0.5, zoom);
+    const dx = (e.clientX - dragStart.x) * scaleFactor;
+    const dy = (e.clientY - dragStart.y) * scaleFactor;
     setOffset((prev) => ({
       x: prev.x + dx,
       y: prev.y + dy,
@@ -129,7 +132,6 @@ export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
     setIsDragging(false);
   };
 
-  // Touch support for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       setIsDragging(true);
@@ -139,8 +141,10 @@ export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || e.touches.length !== 1) return;
-    const dx = (e.touches[0].clientX - dragStart.x) * (600 / 210);
-    const dy = (e.touches[0].clientY - dragStart.y) * (800 / 280);
+    const { targetW } = getTargetDimensions();
+    const scaleFactor = (targetW / 240) / Math.max(0.5, zoom);
+    const dx = (e.touches[0].clientX - dragStart.x) * scaleFactor;
+    const dy = (e.touches[0].clientY - dragStart.y) * scaleFactor;
     setOffset((prev) => ({
       x: prev.x + dx,
       y: prev.y + dy,
@@ -156,21 +160,24 @@ export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
   const handleSave = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.98);
+    const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.95);
     onCropComplete(croppedDataUrl);
     onClose();
   };
 
   if (!isOpen) return null;
 
+  const { label: aspectLabel } = getTargetDimensions();
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-gray-100 dark:border-slate-800 animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-gray-200 dark:border-slate-800 animate-in fade-in zoom-in duration-150">
+        
         {/* Header */}
-        <div className="bg-[#094d28] text-white px-5 py-3.5 flex items-center justify-between border-b border-emerald-900">
+        <div className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-2">
-            <Crop className="w-5 h-5 text-yellow-300" />
-            <h3 className="font-extrabold text-base">फोटो क्रॉप व चेहरा सेंटर करा (Crop Photo)</h3>
+            <Crop className="w-5 h-5 text-amber-300" />
+            <h3 className="font-extrabold text-sm sm:text-base">फोटो / सही क्रॉप करा (Crop Photo / Signature)</h3>
           </div>
           <button
             type="button"
@@ -182,15 +189,51 @@ export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-4 sm:p-5 flex flex-col items-center gap-3.5 bg-slate-50 dark:bg-slate-950/60">
-          <p className="text-xs text-gray-700 dark:text-slate-300 text-center font-medium">
-            फोटो ड्रॅग करून चेहरा मध्यभागी (Center) आणा आणि झूम कंट्रोलने योग्य आकार द्या.
-          </p>
+        {/* Modal Body */}
+        <div className="p-4 flex flex-col items-center gap-4 bg-slate-50 dark:bg-slate-950/60">
+          
+          {/* Aspect Ratio Selector */}
+          <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-full justify-center shadow-xs">
+            <button
+              type="button"
+              onClick={() => { setAspectMode('photo'); handleReset(); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+                aspectMode === 'photo'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold'
+              }`}
+            >
+              <span>📷 फोटो (160×202)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAspectMode('signature'); handleReset(); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+                aspectMode === 'signature'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold'
+              }`}
+            >
+              <span>✍️ सही (256×64)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAspectMode('square'); handleReset(); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+                aspectMode === 'square'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold'
+              }`}
+            >
+              <span>📐 चौरस (1:1)</span>
+            </button>
+          </div>
 
-          {/* Interactive Crop Canvas with Passport 3:4 Frame & Face Oval Guide */}
+          {/* Crop Canvas Box */}
           <div
-            className="relative w-[210px] h-[280px] bg-gray-200 dark:bg-slate-800 rounded-2xl overflow-hidden border-2 border-emerald-600 shadow-lg cursor-grab active:cursor-grabbing select-none"
+            className={`relative bg-white rounded-2xl overflow-hidden border-2 border-blue-600 shadow-lg cursor-grab active:cursor-grabbing select-none flex items-center justify-center transition-all ${
+              aspectMode === 'signature' ? 'w-[280px] h-[70px]' : aspectMode === 'square' ? 'w-[220px] h-[220px]' : 'w-[190px] h-[240px]'
+            }`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -198,76 +241,78 @@ export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onWheel={(e) => {
+              const delta = e.deltaY < 0 ? 0.08 : -0.08;
+              setZoom((z) => Math.min(3.0, Math.max(0.3, parseFloat((z + delta).toFixed(2)))));
+            }}
           >
             <canvas
               ref={canvasRef}
               className="w-full h-full object-cover pointer-events-none"
             />
-
-            {/* Passport Face Position Guide Overlay */}
-            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-              {/* Head / Face Oval Guide */}
-              <div 
-                className="w-[120px] h-[155px] rounded-[50%] border border-dashed border-emerald-500/70 dark:border-emerald-400/80 -mt-5" 
-                style={{ boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.12)' }}
-              />
-              {/* Center Crosshair Marker */}
-              <div className="absolute top-[42%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none">
-                <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-emerald-500/60" />
-                <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-emerald-500/60" />
-              </div>
-            </div>
-
-            {/* Guide Grid overlay */}
-            <div className="absolute inset-0 pointer-events-none grid grid-cols-3 grid-rows-3 border border-white/30">
-              <div className="border-r border-b border-white/20" />
-              <div className="border-r border-b border-white/20" />
-              <div className="border-b border-white/20" />
-              <div className="border-r border-b border-white/20" />
-              <div className="border-r border-b border-white/20" />
-              <div className="border-b border-white/20" />
-              <div className="border-r border-b border-white/20" />
-              <div className="border-r border-b border-white/20" />
-              <div />
-            </div>
-
-            {/* Hint Badge */}
-            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/60 backdrop-blur-xs rounded-full text-[10px] text-white/90 font-medium pointer-events-none">
-              ३:४ पासपोर्ट आकार
+            {/* Guide Label */}
+            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-black/80 backdrop-blur-xs rounded-md text-[10px] text-white font-black shadow-sm pointer-events-none">
+              {aspectLabel}
             </div>
           </div>
 
-          {/* Controls Bar */}
-          <div className="w-full bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-gray-200 dark:border-slate-800 space-y-3">
-            {/* Quick Alignment Action Buttons */}
-            <div className="flex items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={handleCenterFace}
-                className="flex-1 py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs text-center"
-                title="चेहरा मध्यभागी आणा"
-              >
-                🎯 चेहरा सेंटर (Center Face)
-              </button>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer border border-transparent dark:border-slate-700"
-                title="मूळ आकार रिसेट करा"
-              >
-                रीसेट
-              </button>
+          {/* Controls Box */}
+          <div className="w-full bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-gray-200 dark:border-slate-800 space-y-3 shadow-xs">
+            
+            {/* Directional Pad Buttons */}
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[11px] font-extrabold text-slate-600 dark:text-slate-300 mb-0.5">फोटो माऊस किंवा बटनाने सरकवा (Drag / Shift):</span>
+              <div className="flex items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleShiftLeft}
+                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                  title="डावीकडे"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={handleShiftUp}
+                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95"
+                    title="फोटो वर घ्या"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                    <span>वर घ्या</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleShiftDown}
+                    className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95"
+                    title="खाली घ्या"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                    <span>खाली</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleShiftRight}
+                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                  title="उजवीकडे"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Zoom Slider */}
-            <div className="flex items-center gap-2">
+            {/* Zoom Bar */}
+            <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.max(0.4, parseFloat((z - 0.08).toFixed(2))))}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-600 dark:text-slate-400 cursor-pointer"
-                title="झूम कमी करा"
+                className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-gray-700 dark:text-slate-300 cursor-pointer active:scale-95 transition-transform"
+                title="झूम लहान करा"
               >
-                <ZoomOut className="w-4 h-4 shrink-0" />
+                <ZoomOut className="w-4 h-4" />
               </button>
               <input
                 type="range"
@@ -276,74 +321,63 @@ export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({
                 step="0.05"
                 value={zoom}
                 onChange={(e) => setZoom(parseFloat(e.target.value))}
-                className="w-full accent-emerald-600 h-1.5 bg-gray-200 dark:bg-slate-800 rounded-lg cursor-pointer"
+                className="w-full accent-blue-600 h-1.5 bg-gray-200 dark:bg-slate-800 rounded-lg cursor-pointer"
               />
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.min(2.5, parseFloat((z + 0.08).toFixed(2))))}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-600 dark:text-slate-400 cursor-pointer"
-                title="झूम वाढवा"
+                className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-gray-700 dark:text-slate-300 cursor-pointer active:scale-95 transition-transform"
+                title="झूम मोठे करा"
               >
-                <ZoomIn className="w-4 h-4 shrink-0" />
+                <ZoomIn className="w-4 h-4" />
               </button>
-              <span className="text-[11px] font-mono font-bold text-gray-600 dark:text-slate-300 w-10 text-right">
-                {Math.round(zoom * 100)}%
-              </span>
             </div>
 
-            {/* Rotate & Nudge Buttons */}
-            <div className="flex items-center justify-between pt-1 gap-2">
+            {/* Rotate & Reset */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setRotation((prev) => (prev + 90) % 360)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer border border-transparent dark:border-slate-700"
-                title="फोटो ९० अंश फिरवा"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95"
               >
-                <RotateCw className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
-                <span>90° फिरवा</span>
+                <RotateCw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>फिरवा (90°)</span>
               </button>
 
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setOffset((prev) => ({ ...prev, y: prev.y - 35 }))}
-                  className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                  title="फोटो वर सरकवा"
-                >
-                  ↑ वर
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOffset((prev) => ({ ...prev, y: prev.y + 35 }))}
-                  className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                  title="फोटो खाली सरकवा"
-                >
-                  ↓ खाली
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-gray-600 dark:text-slate-400" />
+                <span>रीसेट</span>
+              </button>
             </div>
+
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-3">
+        <div className="p-3.5 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer border border-transparent dark:border-slate-700"
+            className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-xl text-xs font-bold cursor-pointer transition-colors"
           >
-            रद्द करा (Cancel)
+            रद्द करा
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="inline-flex items-center gap-1.5 px-5 py-2 bg-[#094d28] hover:bg-[#073d1f] text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold shadow-md transition-all cursor-pointer active:scale-95"
           >
-            <Check className="w-4 h-4 text-yellow-300" />
-            <span>क्रॉप सेव्ह करा (Save Photo)</span>
+            <Check className="w-4 h-4 text-emerald-200" />
+            <span>क्रॉप सेव्ह करा (Apply Crop)</span>
           </button>
         </div>
+
       </div>
     </div>
   );
 };
+

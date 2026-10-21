@@ -9,6 +9,7 @@ import {
   Crop,
   CheckCircle2,
   ZoomIn,
+  ZoomOut,
   CreditCard,
   FileText,
   User,
@@ -44,7 +45,7 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
   onClose,
   onCropSave,
   cardLabel = 'डॉक्युमेंट क्रॉप',
-  initialMode = 'perspective'
+  initialMode = 'standard'
 }) => {
   const [toolMode, setToolMode] = useState<CropToolMode>(initialMode);
   const [docPreset, setDocPreset] = useState<DocumentPreset>('card');
@@ -71,7 +72,6 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
   // Active interaction drag state
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; rect: CropRect } | null>(null);
-  const [loupeInfo, setLoupeInfo] = useState<{ x: number; y: number; px: number; py: number } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -256,9 +256,9 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
 
     if (toolMode === 'perspective') {
       // ================= PERSPECTIVE CROP RENDER =================
-      // 1. Dark mask outside quadrilateral
+      // 1. Subtle transparent tint outside quadrilateral (NO dark black box)
       ctx.save();
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.08)';
       ctx.fillRect(0, 0, nw, nh);
 
       ctx.globalCompositeOperation = 'destination-out';
@@ -282,7 +282,7 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
       ctx.fill();
 
       // 3. Photoshop Perspective Grid Mesh (lines between opposite edges)
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
       ctx.lineWidth = Math.max(1.5, Math.round(nw / 600));
       const gridSteps = 3;
       for (let i = 1; i < gridSteps; i++) {
@@ -314,9 +314,9 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
         ctx.stroke();
       }
 
-      // 4. Perimeter neon boundary
-      ctx.strokeStyle = '#10b981';
-      ctx.lineWidth = Math.max(3, Math.round(nw / 240));
+      // 4. Dual Perimeter Boundary Lines (Outer Emerald Glow + Inner Crisp White Core)
+      ctx.strokeStyle = '#059669';
+      ctx.lineWidth = Math.max(4, Math.round(nw / 200));
       ctx.beginPath();
       ctx.moveTo(corners.tl.x, corners.tl.y);
       ctx.lineTo(corners.tr.x, corners.tr.y);
@@ -325,7 +325,17 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
       ctx.closePath();
       ctx.stroke();
 
-      // 5. Four Corner Pins (१, २, ३, ४)
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1.5, Math.round(nw / 500));
+      ctx.beginPath();
+      ctx.moveTo(corners.tl.x, corners.tl.y);
+      ctx.lineTo(corners.tr.x, corners.tr.y);
+      ctx.lineTo(corners.br.x, corners.br.y);
+      ctx.lineTo(corners.bl.x, corners.bl.y);
+      ctx.closePath();
+      ctx.stroke();
+
+      // 5. Four Corner Target Pins (१, २, ३, ४) with Target Reticles
       const handles = [
         { key: 'tl', p: corners.tl, label: '१' },
         { key: 'tr', p: corners.tr, label: '२' },
@@ -333,43 +343,134 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
         { key: 'bl', p: corners.bl, label: '४' },
       ];
 
-      const pinRadius = Math.max(14, Math.round(nw / 55));
-      handles.forEach(({ p, label }) => {
-        // Outer halo
-        ctx.fillStyle = '#10b981';
+      const pinRadius = Math.max(16, Math.round(nw / 50));
+      handles.forEach(({ key, p, label }) => {
+        const isActive = activeHandle === key;
+        const currentRadius = isActive ? pinRadius * 1.25 : pinRadius;
+
+        // Target Reticle Crosshair Lines
+        ctx.strokeStyle = isActive ? '#f59e0b' : '#10b981';
+        ctx.lineWidth = 2;
+        const ch = currentRadius * 1.6;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, pinRadius, 0, Math.PI * 2);
+        ctx.moveTo(p.x - ch, p.y);
+        ctx.lineTo(p.x + ch, p.y);
+        ctx.moveTo(p.x, p.y - ch);
+        ctx.lineTo(p.x, p.y + ch);
+        ctx.stroke();
+
+        // Dark Shadow Circle
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, currentRadius + 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Inner circle
+        // Outer Emerald / Amber Active Ring
+        ctx.fillStyle = isActive ? '#f59e0b' : '#10b981';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, currentRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner White Center
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, pinRadius * 0.72, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, currentRadius * 0.7, 0, Math.PI * 2);
         ctx.fill();
 
-        // Pin number
-        ctx.fillStyle = '#065f46';
-        ctx.font = `bold ${Math.round(pinRadius * 0.9)}px sans-serif`;
+        // Pin Number Label
+        ctx.fillStyle = isActive ? '#78350f' : '#064e3b';
+        ctx.font = `black ${Math.round(currentRadius * 0.9)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(label, p.x, p.y);
       });
+
+      // 6. PRECISION MAGNIFIER GLASS LOUPE (When dragging any corner pin)
+      if (activeHandle && ['tl', 'tr', 'br', 'bl'].includes(activeHandle)) {
+        const activeCorner = corners[activeHandle as keyof CornerPoints];
+        const loupeRadius = Math.max(70, Math.round(nw / 10));
+        const zoom = 2.5;
+
+        // Position Loupe top-right or top-left depending on active corner location
+        const isNearTopRight = activeCorner.x > nw * 0.55 && activeCorner.y < nh * 0.45;
+        const loupeX = isNearTopRight ? loupeRadius + 25 : nw - loupeRadius - 25;
+        const loupeY = loupeRadius + 25;
+
+        ctx.save();
+        // Circular clip for Loupe
+        ctx.beginPath();
+        ctx.arc(loupeX, loupeY, loupeRadius, 0, Math.PI * 2);
+        ctx.clip();
+
+        // Background fill for Loupe
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(loupeX - loupeRadius, loupeY - loupeRadius, loupeRadius * 2, loupeRadius * 2);
+
+        // Draw zoomed image segment inside Loupe
+        ctx.drawImage(
+          img,
+          activeCorner.x - loupeRadius / zoom,
+          activeCorner.y - loupeRadius / zoom,
+          (loupeRadius * 2) / zoom,
+          (loupeRadius * 2) / zoom,
+          loupeX - loupeRadius,
+          loupeY - loupeRadius,
+          loupeRadius * 2,
+          loupeRadius * 2
+        );
+
+        // Precision Red Crosshairs inside Loupe
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(loupeX - 20, loupeY);
+        ctx.lineTo(loupeX + 20, loupeY);
+        ctx.moveTo(loupeX, loupeY - 20);
+        ctx.lineTo(loupeX, loupeY + 20);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(loupeX, loupeY, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        // Loupe Outer Glass Ring
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(loupeX, loupeY, loupeRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(loupeX, loupeY, loupeRadius - 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     } else {
-      // ================= STANDARD PHOTOSHOP CROP RENDER =================
+      // ================= STANDARD TRANSPARENT SELECTION MARQUEE CROP RENDER =================
       const { x, y, width, height } = cropRect;
 
-      // 1. Dark mask outside crop box
+      // 1. Subtle light transparent tint outside crop selection box (NO heavy black box!)
       ctx.save();
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.08)';
       ctx.fillRect(0, 0, nw, nh);
 
       ctx.globalCompositeOperation = 'destination-out';
       ctx.fillRect(x, y, width, height);
       ctx.restore();
 
-      // 2. Rule of Thirds Grid (3x3)
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-      ctx.lineWidth = 1.5;
+      // 2. Translucent glass highlight inside active crop selection area
+      ctx.save();
+      ctx.fillStyle = 'rgba(37, 99, 235, 0.06)';
+      ctx.fillRect(x, y, width, height);
+      ctx.restore();
+
+      // 3. Rule of Thirds Grid (3x3) - Crisp translucent lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.lineWidth = 1;
       for (let i = 1; i < 3; i++) {
         // vertical
         ctx.beginPath();
@@ -384,31 +485,73 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
         ctx.stroke();
       }
 
-      // 3. Crisp Blue Crop Boundary
+      // 4. Sharp Selection Marquee Boundary (Glowing Blue)
       ctx.strokeStyle = '#2563eb';
-      ctx.lineWidth = Math.max(2.5, Math.round(nw / 260));
+      ctx.lineWidth = Math.max(2, Math.round(nw / 300));
       ctx.strokeRect(x, y, width, height);
 
-      // 4. 8 Photoshop Handles (NW, N, NE, E, SE, S, SW, W)
-      const hSize = Math.max(12, Math.round(nw / 65));
+      // 5. High-visibility Corner L-Brackets
+      const cLen = Math.min(Math.max(14, Math.round(nw / 45)), Math.min(width, height) / 3);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(3, Math.round(nw / 200));
+
+      // Top-Left Corner
+      ctx.beginPath();
+      ctx.moveTo(x, y + cLen);
+      ctx.lineTo(x, y);
+      ctx.lineTo(x + cLen, y);
+      ctx.stroke();
+
+      // Top-Right Corner
+      ctx.beginPath();
+      ctx.moveTo(x + width - cLen, y);
+      ctx.lineTo(x + width, y);
+      ctx.lineTo(x + width, y + cLen);
+      ctx.stroke();
+
+      // Bottom-Right Corner
+      ctx.beginPath();
+      ctx.moveTo(x + width, y + height - cLen);
+      ctx.lineTo(x + width, y + height);
+      ctx.lineTo(x + width - cLen, y + height);
+      ctx.stroke();
+
+      // Bottom-Left Corner
+      ctx.beginPath();
+      ctx.moveTo(x + cLen, y + height);
+      ctx.lineTo(x, y + height);
+      ctx.lineTo(x, y + height - cLen);
+      ctx.stroke();
+
+      // 6. Prominent Blue/White Circle Handle Dots on 4 Corners + 4 Edge Midpoints for easy Lahan / Motha Resizing!
+      const handleRadius = Math.max(10, Math.round(nw / 90));
       const handlePoints = [
-        { id: 'nw', px: x, py: y },
-        { id: 'n', px: x + width / 2, py: y },
-        { id: 'ne', px: x + width, py: y },
-        { id: 'e', px: x + width, py: y + height / 2 },
-        { id: 'se', px: x + width, py: y + height },
-        { id: 's', px: x + width / 2, py: y + height },
-        { id: 'sw', px: x, py: y + height },
-        { id: 'w', px: x, py: y + height / 2 },
+        { x: x, y: y }, // nw
+        { x: x + width, y: y }, // ne
+        { x: x + width, y: y + height }, // se
+        { x: x, y: y + height }, // sw
+        { x: x + width / 2, y: y }, // n
+        { x: x + width, y: y + height / 2 }, // e
+        { x: x + width / 2, y: y + height }, // s
+        { x: x, y: y + height / 2 }, // w
       ];
 
-      handlePoints.forEach(({ px, py }) => {
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#1d4ed8';
-        ctx.lineWidth = 2.5;
+      handlePoints.forEach((hp) => {
+        // Glowing Blue Base
+        ctx.fillStyle = '#2563eb';
         ctx.beginPath();
-        ctx.rect(px - hSize / 2, py - hSize / 2, hSize, hSize);
+        ctx.arc(hp.x, hp.y, handleRadius, 0, Math.PI * 2);
         ctx.fill();
+
+        // Inner White Center
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(hp.x, hp.y, handleRadius * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Outer Dark Border Ring
+        ctx.strokeStyle = '#1e3a8a';
+        ctx.lineWidth = Math.max(2, Math.round(handleRadius * 0.25));
         ctx.stroke();
       });
     }
@@ -420,7 +563,7 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
     renderCanvas();
   }, [renderCanvas]);
 
-  // Pointer Down Interaction
+  // Pointer Down Interaction (Drag Selection Creation & Manipulation)
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     const img = imgRef.current;
@@ -431,10 +574,14 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
     const scaleY = canvas.height / rect.height;
     const pad = 40;
 
-    const clickX = (e.clientX - rect.left) * scaleX - pad;
-    const clickY = (e.clientY - rect.top) * scaleY - pad;
+    const clickX = Math.round((e.clientX - rect.left) * scaleX - pad);
+    const clickY = Math.round((e.clientY - rect.top) * scaleY - pad);
 
     const nw = img.naturalWidth || img.width;
+    const nh = img.naturalHeight || img.height;
+
+    const clampedX = Math.min(Math.max(0, clickX), nw);
+    const clampedY = Math.min(Math.max(0, clickY), nh);
 
     if (toolMode === 'perspective') {
       const hitRadius = Math.max(30, Math.round(nw / 24));
@@ -452,43 +599,59 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
 
       if (found) {
         setActiveHandle(found);
-        setLoupeInfo({ x: e.clientX, y: e.clientY, px: clickX, py: clickY });
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
       }
     } else {
-      // Standard 8 handles hit test
+      // Selection Mode (No handle points)
       const { x, y, width, height } = cropRect;
-      const hHit = Math.max(24, Math.round(nw / 28));
+      
+      // Calculate hit tolerance in canvas coordinate space considering canvas CSS scaling
+      const cssScaleX = canvas.width / (rect.width || 1);
+      const edgeHit = Math.max(36 * cssScaleX, Math.round(nw / 20));
 
-      const handles = [
-        { id: 'nw', px: x, py: y },
-        { id: 'n', px: x + width / 2, py: y },
-        { id: 'ne', px: x + width, py: y },
-        { id: 'e', px: x + width, py: y + height / 2 },
-        { id: 'se', px: x + width, py: y + height },
-        { id: 's', px: x + width / 2, py: y + height },
-        { id: 'sw', px: x, py: y + height },
-        { id: 'w', px: x, py: y + height / 2 },
-      ];
+      const isNearLeft = Math.abs(clampedX - x) <= edgeHit;
+      const isNearRight = Math.abs(clampedX - (x + width)) <= edgeHit;
+      const isNearTop = Math.abs(clampedY - y) <= edgeHit;
+      const isNearBottom = Math.abs(clampedY - (y + height)) <= edgeHit;
 
-      let foundHandle: string | null = null;
-      for (const h of handles) {
-        if (Math.hypot(h.px - clickX, h.py - clickY) <= hHit) {
-          foundHandle = h.id;
-          break;
-        }
-      }
+      const isInsideX = clampedX >= x && clampedX <= x + width;
+      const isInsideY = clampedY >= y && clampedY <= y + height;
 
-      if (foundHandle) {
-        setActiveHandle(foundHandle);
-        setDragStart({ x: clickX, y: clickY, rect: { ...cropRect } });
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      } else if (clickX >= x && clickX <= x + width && clickY >= y && clickY <= y + height) {
-        // Move entire box
+      if (isNearTop && isNearLeft) {
+        setActiveHandle('nw');
+        setDragStart({ x: clampedX, y: clampedY, rect: { ...cropRect } });
+      } else if (isNearTop && isNearRight) {
+        setActiveHandle('ne');
+        setDragStart({ x: clampedX, y: clampedY, rect: { ...cropRect } });
+      } else if (isNearBottom && isNearRight) {
+        setActiveHandle('se');
+        setDragStart({ x: clampedX, y: clampedY, rect: { ...cropRect } });
+      } else if (isNearBottom && isNearLeft) {
+        setActiveHandle('sw');
+        setDragStart({ x: clampedX, y: clampedY, rect: { ...cropRect } });
+      } else if (isNearTop && isInsideX) {
+        setActiveHandle('n');
+        setDragStart({ x: clampedX, y: clampedY, rect: { ...cropRect } });
+      } else if (isNearBottom && isInsideX) {
+        setActiveHandle('s');
+        setDragStart({ x: clampedX, y: clampedY, rect: { ...cropRect } });
+      } else if (isNearLeft && isInsideY) {
+        setActiveHandle('w');
+        setDragStart({ x: clampedX, y: clampedY, rect: { ...cropRect } });
+      } else if (isNearRight && isInsideY) {
+        setActiveHandle('e');
+        setDragStart({ x: clampedX, y: clampedY, rect: { ...cropRect } });
+      } else if (isInsideX && isInsideY && width > 40 && height > 40) {
+        // Move selection box
         setActiveHandle('move');
-        setDragStart({ x: clickX, y: clickY, rect: { ...cropRect } });
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        setDragStart({ x: clampedX, y: clampedY, rect: { ...cropRect } });
+      } else {
+        // Click and drag anywhere to draw a NEW selection box immediately!
+        setActiveHandle('select');
+        setDragStart({ x: clampedX, y: clampedY, rect: { x: clampedX, y: clampedY, width: 0, height: 0 } });
       }
+
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
     }
   };
 
@@ -517,67 +680,84 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
         ...prev,
         [cornerKey]: { x: Math.round(canvasX), y: Math.round(canvasY) },
       }));
-      setLoupeInfo({ x: e.clientX, y: e.clientY, px: canvasX, py: canvasY });
     } else if (dragStart) {
-      const orig = dragStart.rect;
-      const dx = canvasX - dragStart.x;
-      const dy = canvasY - dragStart.y;
-      const minSize = 40;
+      if (activeHandle === 'select') {
+        // Drag to draw new marquee selection rectangle
+        const startX = dragStart.x;
+        const startY = dragStart.y;
 
-      let nextX = orig.x;
-      let nextY = orig.y;
-      let nextW = orig.width;
-      let nextH = orig.height;
+        const selX = Math.min(startX, canvasX);
+        const selY = Math.min(startY, canvasY);
+        const selW = Math.abs(canvasX - startX);
+        const selH = Math.abs(canvasY - startY);
 
-      switch (activeHandle) {
-        case 'move':
-          nextX = Math.min(Math.max(0, orig.x + dx), nw - orig.width);
-          nextY = Math.min(Math.max(0, orig.y + dy), nh - orig.height);
-          break;
-        case 'nw':
-          nextX = Math.min(canvasX, orig.x + orig.width - minSize);
-          nextY = Math.min(canvasY, orig.y + orig.height - minSize);
-          nextW = orig.width + (orig.x - nextX);
-          nextH = orig.height + (orig.y - nextY);
-          break;
-        case 'ne':
-          nextY = Math.min(canvasY, orig.y + orig.height - minSize);
-          nextW = Math.max(minSize, Math.min(canvasX - orig.x, nw - orig.x));
-          nextH = orig.height + (orig.y - nextY);
-          break;
-        case 'se':
-          nextW = Math.max(minSize, Math.min(canvasX - orig.x, nw - orig.x));
-          nextH = Math.max(minSize, Math.min(canvasY - orig.y, nh - orig.y));
-          break;
-        case 'sw':
-          nextX = Math.min(canvasX, orig.x + orig.width - minSize);
-          nextW = orig.width + (orig.x - nextX);
-          nextH = Math.max(minSize, Math.min(canvasY - orig.y, nh - orig.y));
-          break;
-        case 'n':
-          nextY = Math.min(canvasY, orig.y + orig.height - minSize);
-          nextH = orig.height + (orig.y - nextY);
-          break;
-        case 's':
-          nextH = Math.max(minSize, Math.min(canvasY - orig.y, nh - orig.y));
-          break;
-        case 'w':
-          nextX = Math.min(canvasX, orig.x + orig.width - minSize);
-          nextW = orig.width + (orig.x - nextX);
-          break;
-        case 'e':
-          nextW = Math.max(minSize, Math.min(canvasX - orig.x, nw - orig.x));
-          break;
+        if (selW > 5 || selH > 5) {
+          setCropRect({
+            x: Math.round(selX),
+            y: Math.round(selY),
+            width: Math.round(Math.max(20, selW)),
+            height: Math.round(Math.max(20, selH)),
+          });
+        }
+      } else {
+        const orig = dragStart.rect;
+        const dx = canvasX - dragStart.x;
+        const dy = canvasY - dragStart.y;
+        const minSize = 20;
+
+        let nextX = orig.x;
+        let nextY = orig.y;
+        let nextW = orig.width;
+        let nextH = orig.height;
+
+        switch (activeHandle) {
+          case 'move':
+            nextX = Math.min(Math.max(0, orig.x + dx), nw - orig.width);
+            nextY = Math.min(Math.max(0, orig.y + dy), nh - orig.height);
+            break;
+          case 'nw':
+            nextX = Math.min(canvasX, orig.x + orig.width - minSize);
+            nextY = Math.min(canvasY, orig.y + orig.height - minSize);
+            nextW = orig.width + (orig.x - nextX);
+            nextH = orig.height + (orig.y - nextY);
+            break;
+          case 'ne':
+            nextY = Math.min(canvasY, orig.y + orig.height - minSize);
+            nextW = Math.max(minSize, Math.min(canvasX - orig.x, nw - orig.x));
+            nextH = orig.height + (orig.y - nextY);
+            break;
+          case 'se':
+            nextW = Math.max(minSize, Math.min(canvasX - orig.x, nw - orig.x));
+            nextH = Math.max(minSize, Math.min(canvasY - orig.y, nh - orig.y));
+            break;
+          case 'sw':
+            nextX = Math.min(canvasX, orig.x + orig.width - minSize);
+            nextW = orig.width + (orig.x - nextX);
+            nextH = Math.max(minSize, Math.min(canvasY - orig.y, nh - orig.y));
+            break;
+          case 'n':
+            nextY = Math.min(canvasY, orig.y + orig.height - minSize);
+            nextH = orig.height + (orig.y - nextY);
+            break;
+          case 's':
+            nextH = Math.max(minSize, Math.min(canvasY - orig.y, nh - orig.y));
+            break;
+          case 'w':
+            nextX = Math.min(canvasX, orig.x + orig.width - minSize);
+            nextW = orig.width + (orig.x - nextX);
+            break;
+          case 'e':
+            nextW = Math.max(minSize, Math.min(canvasX - orig.x, nw - orig.x));
+            break;
+        }
+
+        setCropRect({
+          x: Math.round(Math.max(0, nextX)),
+          y: Math.round(Math.max(0, nextY)),
+          width: Math.round(Math.min(nextW, nw - nextX)),
+          height: Math.round(Math.min(nextH, nh - nextY)),
+        });
       }
-
-      setCropRect({
-        x: Math.round(Math.max(0, nextX)),
-        y: Math.round(Math.max(0, nextY)),
-        width: Math.round(Math.min(nextW, nw - nextX)),
-        height: Math.round(Math.min(nextH, nh - nextY)),
-      });
-
-      setLoupeInfo({ x: e.clientX, y: e.clientY, px: canvasX, py: canvasY });
     }
   };
 
@@ -589,8 +769,44 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
       } catch (_) {}
       setActiveHandle(null);
       setDragStart(null);
-      setLoupeInfo(null);
     }
+  };
+
+  // Mouse Wheel Scroll Zoom (Zoom In / Zoom Out crop box)
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    const img = imgRef.current;
+    if (!img) return;
+    const nw = img.naturalWidth || img.width;
+    const nh = img.naturalHeight || img.height;
+
+    const factor = e.deltaY < 0 ? 1.08 : 0.92;
+    setCropRect((prev) => {
+      const newW = Math.min(nw, Math.max(30, Math.round(prev.width * factor)));
+      const newH = Math.min(nh, Math.max(30, Math.round(prev.height * factor)));
+      const diffW = newW - prev.width;
+      const diffH = newH - prev.height;
+      const newX = Math.max(0, Math.min(nw - newW, Math.round(prev.x - diffW / 2)));
+      const newY = Math.max(0, Math.min(nh - newH, Math.round(prev.y - diffH / 2)));
+      return { x: newX, y: newY, width: newW, height: newH };
+    });
+  };
+
+  // Button-based Scale Crop Box (1-Click Lahan / Motha Resizing)
+  const handleScaleCrop = (scaleFactor: number) => {
+    const img = imgRef.current;
+    if (!img) return;
+    const nw = img.naturalWidth || img.width;
+    const nh = img.naturalHeight || img.height;
+
+    setCropRect((prev) => {
+      const newW = Math.min(nw, Math.max(30, Math.round(prev.width * scaleFactor)));
+      const newH = Math.min(nh, Math.max(30, Math.round(prev.height * scaleFactor)));
+      const diffW = newW - prev.width;
+      const diffH = newH - prev.height;
+      const newX = Math.max(0, Math.min(nw - newW, Math.round(prev.x - diffW / 2)));
+      const newY = Math.max(0, Math.min(nh - newH, Math.round(prev.y - diffH / 2)));
+      return { x: newX, y: newY, width: newW, height: newH };
+    });
   };
 
   // Execute and Save Crop with 100% Guaranteed Original Quality
@@ -644,39 +860,39 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl max-h-[96vh] flex flex-col overflow-hidden">
         
-        {/* HEADER TOOLBAR WITH PHOTOSHOP CROP & PERSPECTIVE CROP TABS */}
-        <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between shrink-0 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-black text-amber-400 flex items-center gap-1.5">
-              <Crop className="w-4.5 h-4.5" />
+        {/* HEADER TOOLBAR WITH CLEAN MODE SWITCHER */}
+        <div className="bg-slate-900 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2 shrink-0 border-b border-slate-800">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-black text-amber-400 flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-amber-400" />
               <span>{cardLabel}</span>
             </span>
 
-            {/* PHOTOSHOP CROP MODE SWITCHER */}
-            <div className="flex items-center bg-slate-800 p-0.5 rounded-xl border border-slate-700">
+            {/* CROP MODE SWITCHER TABS */}
+            <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
               <button
                 type="button"
                 onClick={() => setToolMode('perspective')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
                   toolMode === 'perspective'
-                    ? 'bg-emerald-600 text-white shadow-xs'
+                    ? 'bg-emerald-600 text-white shadow-sm font-black'
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
                 <Target className="w-3.5 h-3.5 text-amber-300" />
-                <span>🎯 पर्स्पेक्टिव्ह क्रॉप (४-कोने सरळ करा)</span>
+                <span>🎯 ४-कोने सरळ करा (Perspective)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setToolMode('standard')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
                   toolMode === 'standard'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-blue-600 text-white shadow-sm font-black'
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <Crop className="w-3.5 h-3.5" />
+                <Crop className="w-3.5 h-3.5 text-blue-200" />
                 <span>📐 स्टँडर्ड क्रॉप (Photoshop Crop)</span>
               </button>
             </div>
@@ -685,37 +901,38 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer transition-colors"
+            title="बंद करा"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* SUBHEADER: PRESETS, ROTATE & AUTO-FIT */}
-        <div className="bg-slate-100 dark:bg-slate-950 px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs">
+        {/* SUBHEADER: PRESETS & ESSENTIAL TOOLS */}
+        <div className="bg-slate-100 dark:bg-slate-950 px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs">
           {/* Quick Document Presets */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-slate-600 dark:text-slate-400">साईज रेशिओ:</span>
+            <span className="font-bold text-slate-500 dark:text-slate-400">साईज:</span>
             <button
               type="button"
               onClick={() => applyPreset('card')}
-              className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer font-bold transition-all ${
                 docPreset === 'card'
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                  ? 'bg-emerald-600 text-white shadow-sm font-black'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               <CreditCard className="w-3.5 h-3.5" />
-              <span>PVC कार्ड (Aadhaar / PAN)</span>
+              <span>PVC कार्ड</span>
             </button>
 
             <button
               type="button"
               onClick={() => applyPreset('a4')}
-              className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer font-bold transition-all ${
                 docPreset === 'a4'
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                  ? 'bg-emerald-600 text-white shadow-sm font-black'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
@@ -724,24 +941,11 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
 
             <button
               type="button"
-              onClick={() => applyPreset('passport')}
-              className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer font-bold transition-all ${
-                docPreset === 'passport'
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              <User className="w-3.5 h-3.5" />
-              <span>पासपोर्ट फोटो</span>
-            </button>
-
-            <button
-              type="button"
               onClick={() => applyPreset('free')}
-              className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer font-bold transition-all ${
                 docPreset === 'free'
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                  ? 'bg-emerald-600 text-white shadow-sm font-black'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               <Maximize2 className="w-3.5 h-3.5" />
@@ -749,12 +953,34 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
             </button>
           </div>
 
-          {/* Quick Rotate & Auto-Fit Tools */}
-          <div className="flex items-center gap-1.5">
+          {/* Quick Zoom, Rotate & Auto-Fit Tools */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* EASY 1-CLICK LAHAN / MOTHA BUTTONS */}
+            <div className="flex items-center gap-1 bg-blue-50 dark:bg-slate-800 p-1 rounded-xl border border-blue-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => handleScaleCrop(0.85)}
+                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 transition-all"
+                title="निवडलेली जागा लहान करा"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+                <span>🔍 लहान करा</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScaleCrop(1.18)}
+                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 transition-all"
+                title="निवडलेली जागा मोठी करा"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+                <span>🔍 मोठे करा</span>
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={handleAutoFit}
-              className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
               title="डॉक्युमेंटच्या कडा आपोआप सेट करा"
             >
               <Wand2 className="w-3.5 h-3.5" />
@@ -764,106 +990,33 @@ export const WhatsAppCardCropModal: React.FC<WhatsAppCardCropModalProps> = ({
             <button
               type="button"
               onClick={() => setRotationAngle((prev) => (prev + 90) % 360)}
-              className="px-2.5 py-1.5 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-lg font-bold flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="फोटो ९०° ने फिरवा"
             >
-              <RotateCw className="w-3.5 h-3.5" />
+              <RotateCw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>फिरवा ({rotationAngle}°)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleReset}
-              className="px-2.5 py-1.5 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold flex items-center gap-1 cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>रीसेट</span>
             </button>
           </div>
         </div>
 
         {/* INTERACTIVE CROP CANVAS */}
-        <div className="flex-1 bg-slate-950 overflow-auto p-3 flex items-center justify-center relative min-h-[320px]">
+        <div className="flex-1 bg-slate-950 overflow-auto p-4 flex items-center justify-center relative min-h-[340px]">
           <canvas
             ref={canvasRef}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-2xl cursor-crosshair touch-none select-none border border-slate-800"
+            onWheel={handleWheel}
+            className="max-w-full max-h-[62vh] object-contain rounded-lg shadow-2xl cursor-crosshair touch-none select-none border border-slate-800"
           />
-
-          {/* Real-time Magnifier Glass Loupe */}
-          {loupeInfo && (
-            <div
-              className="pointer-events-none fixed z-50 w-28 h-28 rounded-full border-4 border-amber-400 bg-slate-950 shadow-2xl overflow-hidden flex items-center justify-center"
-              style={{
-                left: `${loupeInfo.x - 56}px`,
-                top: `${loupeInfo.y - 120}px`,
-              }}
-            >
-              <div className="text-center text-white text-[11px] font-mono">
-                <ZoomIn className="w-5 h-5 mx-auto text-amber-400 mb-0.5" />
-                <span className="font-bold">X: {Math.round(loupeInfo.px)}</span>
-                <br />
-                <span className="font-bold">Y: {Math.round(loupeInfo.py)}</span>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* FOOTER: PRINT QUALITY FILTER & CONFIRM BUTTON */}
-        <div className="bg-slate-50 dark:bg-slate-900 p-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          {/* Quality Mode Selection */}
-          <div className="flex items-center gap-2 text-xs flex-wrap">
-            <span className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>प्रिंट क्वालिटी:</span>
-            </span>
-
-            {/* DEFAULT & RECOMMENDED: ORIGINAL HD QUALITY */}
-            <button
-              type="button"
-              onClick={() => setFilterMode('original')}
-              className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
-                filterMode === 'original'
-                  ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/50'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              <span>🌟 मूळ क्वालिटी (Original HD - Best & Clear)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFilterMode('magic')}
-              className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
-                filterMode === 'magic'
-                  ? 'bg-amber-500 text-white shadow-md'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-yellow-200" />
-              <span>✨ बॅकग्राउंड व्हाईट (Auto White)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFilterMode('bw')}
-              className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
-                filterMode === 'bw'
-                  ? 'bg-slate-800 text-white shadow-md'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>📄 B&W डॉक्युमेंट</span>
-            </button>
-          </div>
-
-          {/* Confirm Crop Button */}
+        {/* FOOTER: CLEAN SINGLE PRIMARY ACTION BUTTON */}
+        <div className="bg-slate-900 p-3.5 border-t border-slate-800 flex items-center justify-center shrink-0">
           <button
             type="button"
             onClick={handleSaveCrop}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 transition-all"
+            className="w-full sm:w-auto px-8 py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl text-sm font-black flex items-center justify-center gap-2.5 cursor-pointer shadow-xl active:scale-95 transition-all border border-emerald-500"
           >
             <CheckCircle2 className="w-5 h-5 text-amber-300" />
             <span>✅ क्रॉप करा व प्रिंटसाठी ठेवा (Apply Crop)</span>

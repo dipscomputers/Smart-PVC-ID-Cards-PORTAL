@@ -19,11 +19,13 @@ import {
   HeartPulse,
   ShieldPlus,
   HardHat,
-  MessageSquare
+  MessageSquare,
+  Maximize2,
+  QrCode
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
-export type PortalTab = 'dashboard' | 'farmer-id' | 'passport-photo' | 'whatsapp-print' | 'maha-id' | 'adhar-card' | 'pan-card' | 'electoral-card' | 'mera-rashan-card' | 'ayushman-card' | 'abha-card' | 'eshram-card' | 'pocra-consent' | 'swayam-ghoshana';
+export type PortalTab = 'dashboard' | 'farmer-id' | 'passport-photo' | 'photo-resizes' | 'whatsapp-print' | 'my-qr-payment' | 'maha-id' | 'adhar-card' | 'pan-card' | 'electoral-card' | 'mera-rashan-card' | 'ayushman-card' | 'abha-card' | 'eshram-card' | 'pocra-consent' | 'swayam-ghoshana';
 
 interface SidebarProps {
   activeTab: PortalTab;
@@ -32,8 +34,8 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-// Default dignified Indian Farmer avatar image
-const DEFAULT_FARMER_AVATAR = 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=240&auto=format&fit=crop&q=80';
+// Default profile avatar image provided by user
+const DEFAULT_FARMER_AVATAR = 'https://blogger.googleusercontent.com/img/a/AVvXsEgnbNMNM_EqpDyQSqW9ncSuuuTWPL4O3qTCxY6bRvfwp5r83CtUsP0FYf19hveo9KcTlvujYd5Wobnjz1nRO0-ZolOim5gRImhZQmhKHIWcrqKf6RDoQVoYwrgUxT0a6SPdBs975K3dLArV9nocqTXzCaJ92561kvcyQXbbvUSh5TwkHp7wSixT1fs-kDAR=s1600';
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
@@ -43,7 +45,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { theme, setTheme } = useTheme();
   const [profilePhoto, setProfilePhoto] = useState<string>(() => {
-    return localStorage.getItem('dips_farmer_profile_photo') || DEFAULT_FARMER_AVATAR;
+    const saved = localStorage.getItem('dips_farmer_profile_photo');
+    // If saved photo is empty or the old unsplash link, use the new custom user profile photo
+    if (!saved || saved.includes('images.unsplash.com')) {
+      return DEFAULT_FARMER_AVATAR;
+    }
+    return saved;
   });
 
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -84,9 +91,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Camera,
     },
     {
+      id: 'photo-resizes' as PortalTab,
+      label: 'Photo & PDF Resizer',
+      icon: Maximize2,
+    },
+    {
       id: 'whatsapp-print' as PortalTab,
       label: 'Whatsapp Print',
       icon: MessageSquare,
+    },
+    {
+      id: 'my-qr-payment' as PortalTab,
+      label: 'My QR payment',
+      icon: QrCode,
     },
     {
       id: 'maha-id' as PortalTab,
@@ -176,31 +193,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <X className="w-5 h-5" />
             </button>
 
-            {/* Circular Profile Avatar (Farmer Photo with change option) */}
-            <div className="relative w-20 h-20 mx-auto mb-3 group">
-              <div className="w-20 h-20 rounded-full bg-white/15 border-3 border-white/80 overflow-hidden shadow-lg flex items-center justify-center">
-                {profilePhoto && profilePhoto.trim() !== '' ? (
-                  <img
-                    src={profilePhoto}
-                    alt="Farmer Avatar"
-                    className="w-full h-full object-cover object-center"
-                    onError={() => setProfilePhoto(DEFAULT_FARMER_AVATAR)}
-                  />
-                ) : (
-                  <User className="w-10 h-10 text-white/90" />
-                )}
-              </div>
-
-              {/* Upload photo overlay on hover */}
-              <button
-                type="button"
-                onClick={() => photoInputRef.current?.click()}
-                title="प्रोफाईल फोटो बदला"
-                className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold cursor-pointer backdrop-blur-2xs"
-              >
-                <Camera className="w-5 h-5 mb-0.5" />
-                <span>फोटो बदला</span>
-              </button>
+            {/* Full Logo Avatar Display (No Borders, Full Visibility, No Hover Change Button) */}
+            <div className="w-24 h-24 mx-auto mb-3 flex items-center justify-center">
+              {profilePhoto && profilePhoto.trim() !== '' ? (
+                <img
+                  src={profilePhoto}
+                  alt="DIPs Computers Logo"
+                  className="w-full h-full object-contain p-0.5 drop-shadow-md"
+                  onError={() => setProfilePhoto(DEFAULT_FARMER_AVATAR)}
+                />
+              ) : (
+                <User className="w-12 h-12 text-white/90" />
+              )}
             </div>
 
             {/* दिप्स कॉम्प्युटर्स & दिपक मा. खंदारे (पाटील) */}

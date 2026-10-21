@@ -37,7 +37,7 @@ import { FarmerIdPrintView } from './FarmerIdPrintView';
 import { PhotoCropModal } from './PhotoCropModal';
 import { PhotoHdModal } from './PhotoHdModal';
 import { parseFarmerRegistrationPdf } from '../utils/farmerRegistrationPdfParser';
-import { extractPhotoFromDocument } from '../utils/pdfPhotoExtractor';
+import { extractPhotoFromDocument, stripTopTextAndTrim } from '../utils/pdfPhotoExtractor';
 import { printComponent } from '../utils/printHelper';
 import { PdfPasswordModal } from './PdfPasswordModal';
 import { transliterateEnglishToMarathi } from '../utils/marathiTransliteration';
@@ -692,6 +692,12 @@ export const FarmerIdCardSection: React.FC = () => {
     setTimeout(() => setUploadStatus(null), 2500);
   };
 
+  // Shift photo upwards & open crop modal
+  const handleShiftPhotoUp = async () => {
+    if (!activeCard.photoUrl) return;
+    setIsCropModalOpen(true);
+  };
+
   const totalAreaHa = calculateTotalArea(activeCard.lands || []);
   const totalAreaAcres = calculateTotalAreaAcres(activeCard.lands || []);
 
@@ -1164,26 +1170,26 @@ export const FarmerIdCardSection: React.FC = () => {
                       className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#006837] hover:bg-[#00522b] text-white rounded-2xl font-bold text-xs sm:text-sm shadow-sm cursor-pointer transition-all active:scale-95 w-full max-w-[210px]"
                     >
                       <Camera className="w-4 h-4 text-emerald-200" />
-                      <span>{activeCard.photoUrl ? 'फोटो बदला (Change Photo)' : 'फोटो निवडा (Choose Photo)'}</span>
+                      <span>{activeCard.photoUrl ? 'Change Photo' : 'Choose Photo'}</span>
                     </button>
 
-                    {/* Secondary Action Buttons (Crop Photo & Remove Photo) */}
+                    {/* Secondary Action Buttons (Shift Up, Crop Photo & Remove Photo) */}
                     {activeCard.photoUrl && (
-                      <div className="flex items-center justify-center gap-2 pt-1 w-full max-w-[260px]">
+                      <div className="flex flex-wrap items-center justify-center gap-2 pt-1 w-full max-w-[280px]">
                         <button
                           type="button"
                           onClick={() => setIsCropModalOpen(true)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-bold text-xs shadow-xs cursor-pointer transition-all active:scale-95 border bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800"
-                          title="फोटो क्रॉप व ऍडजस्ट करा (चेहरा मध्यभागी करा, झूम ऍडजस्ट करा)"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs shadow-xs cursor-pointer transition-all active:scale-95 border bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800"
+                          title="फोटो क्रॉप व ऍडजस्ट करा"
                         >
                           <Crop className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
-                          <span>फोटो क्रॉप (Crop Photo)</span>
+                          <span>फोटो क्रॉप</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={handleRemovePhoto}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-bold text-xs shadow-2xs cursor-pointer transition-all active:scale-95"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-bold text-xs shadow-2xs cursor-pointer transition-all active:scale-95"
                           title="फोटो काढून टाका"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

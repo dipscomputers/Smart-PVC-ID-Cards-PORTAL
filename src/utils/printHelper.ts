@@ -76,6 +76,11 @@ export function printComponent(
           min-height: 297mm !important;
           overflow: visible !important;
         }
+        .no-print,
+        .print\:hidden {
+          display: none !important;
+          visibility: hidden !important;
+        }
         /* Hide all regular app nodes */
         body > *:not(#app-print-portal) {
           display: none !important;
@@ -91,12 +96,32 @@ export function printComponent(
           width: 210mm !important;
           height: 297mm !important;
           min-height: 297mm !important;
+          max-width: 210mm !important;
+          max-height: 297mm !important;
+          aspect-ratio: 210 / 297 !important;
           background: #ffffff !important;
-          margin: 0 !important;
+          margin: 0 auto !important;
           padding: 0 !important;
           box-sizing: border-box !important;
           z-index: 999999 !important;
-          overflow: visible !important;
+          overflow: hidden !important;
+          border: none !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+        #app-print-portal #whatsapp-print-preview,
+        #whatsapp-print-preview {
+          width: 210mm !important;
+          height: 297mm !important;
+          max-width: none !important;
+          min-width: 210mm !important;
+          max-height: 297mm !important;
+          aspect-ratio: 210 / 297 !important;
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
         #app-print-portal:not(.pocra-print-sheet):not(.swayam-a4-sheet):not(.farmer-id-a4-sheet):not(.a4-print-sheet) {
           margin: 0 !important;

@@ -9,7 +9,9 @@ import { Sidebar, PortalTab } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
 import { FarmerIdCardSection } from './components/FarmerIdCardSection';
 import { PassportPhotoSection } from './components/PassportPhotoSection';
+import { PhotoResizerSection } from './components/PhotoResizerSection';
 import { WhatsAppPrintSection } from './components/WhatsAppPrintSection';
+import { MyQrPaymentSection } from './components/MyQrPaymentSection';
 import { MahaIdCardSection } from './components/MahaIdCardSection';
 import { AadhaarCardSection } from './components/AadhaarCardSection';
 import { PanCardSection } from './components/PanCardSection';
@@ -22,7 +24,7 @@ import { PocraConsentSection } from './components/PocraConsentSection';
 import { SwayamGhoshanaSection } from './components/SwayamGhoshanaSection';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<PortalTab>('farmer-id');
+  const [activeTab, setActiveTab] = useState<PortalTab>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { toggleTheme } = useTheme();
 
@@ -87,9 +89,19 @@ export default function App() {
                 <PassportPhotoSection />
               )}
 
+              {/* TAB 2.55: PHOTO RESIZER */}
+              {activeTab === 'photo-resizes' && (
+                <PhotoResizerSection />
+              )}
+
               {/* TAB 2.6: WHATSAPP PRINT */}
               {activeTab === 'whatsapp-print' && (
                 <WhatsAppPrintSection />
+              )}
+
+              {/* TAB 2.7: MY QR PAYMENT (POS) */}
+              {activeTab === 'my-qr-payment' && (
+                <MyQrPaymentSection />
               )}
 
               {/* TAB 3: MAHA ID CARD */}

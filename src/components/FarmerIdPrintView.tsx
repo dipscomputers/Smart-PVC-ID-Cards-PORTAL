@@ -27,6 +27,8 @@ interface FarmerIdPrintViewProps {
   onOpenCrop: () => void;
   onBackToForm: () => void;
   onAddPdf?: () => void;
+  photoFitMode?: 'cover' | 'contain' | 'fill';
+  setPhotoFitMode?: (mode: 'cover' | 'contain' | 'fill') => void;
 }
 
 export const FarmerIdPrintView: React.FC<FarmerIdPrintViewProps> = ({
@@ -37,9 +39,16 @@ export const FarmerIdPrintView: React.FC<FarmerIdPrintViewProps> = ({
   onOpenCrop,
   onBackToForm,
   onAddPdf,
+  photoFitMode,
+  setPhotoFitMode,
 }) => {
   const [viewMode, setViewMode] = useState<'front' | 'back' | 'both'>('both');
-  const [photoFitMode, setPhotoFitMode] = useState<'cover' | 'contain'>('cover');
+  const [internalFitMode, setInternalFitMode] = useState<'cover' | 'contain' | 'fill'>('fill');
+  const currentPhotoFitMode = photoFitMode || internalFitMode;
+  const handleFitModeChange = (mode: 'cover' | 'contain' | 'fill') => {
+    if (setPhotoFitMode) setPhotoFitMode(mode);
+    setInternalFitMode(mode);
+  };
   const [printLayoutMode, setPrintLayoutMode] = useState<'single' | 'all-on-one-page'>(
     cards && cards.length > 1 ? 'all-on-one-page' : 'single'
   );
@@ -197,49 +206,120 @@ export const FarmerIdPrintView: React.FC<FarmerIdPrintViewProps> = ({
     setNotification(null);
 
     try {
-      const isMulti = printLayoutMode === 'all-on-one-page' && cards.length > 1;
-      const targetId = isMulti ? 'printable-farmer-all-a4-sheet' : 'printable-farmer-a4-sheet';
-      let targetEl = document.getElementById(targetId);
+      const safeName = (currentCard.fullNameEn || currentCard.fullNameMr || 'Farmer').replace(/[^a-zA-Z0-9_\u0900-\u097F]/g, '_');
+      let frontEl = document.getElementById('modal-farmer-front');
+      let backEl = document.getElementById('modal-farmer-back');
 
-      if (!targetEl) {
-        targetEl = document.getElementById(isMulti ? 'printable-farmer-a4-sheet' : 'printable-farmer-all-a4-sheet');
-      }
-
-      if (!targetEl) {
-        // Fallback to on-screen card preview container
-        const frontEl = document.getElementById('modal-farmer-front');
-        if (frontEl) {
-          targetEl = frontEl.parentElement || frontEl;
+      // Fallback to portal element if on-screen elements not mounted
+      if (!frontEl && !backEl) {
+        const portalPvc = document.getElementById('printable-farmer-pvc-direct');
+        if (portalPvc) {
+          const subDivs = portalPvc.querySelectorAll('div');
+          if (subDivs.length >= 2) {
+            frontEl = subDivs[0] as HTMLElement;
+            backEl = subDivs[1] as HTMLElement;
+          }
         }
       }
 
-      if (!targetEl) {
-        throw new Error('प्रिंट घटक लोड झालेला नाही. कृपया थोडे थांबा.');
+      // If viewMode is 'both' (or default both sides exist), combine both into ONE single JPG image
+      if ((viewMode === 'both' || (!viewMode && frontEl && backEl)) && frontEl && backEl) {
+        const frontCanvas = await safeHtml2Canvas(frontEl as HTMLElement, {
+          scale: 3,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          allowTaint: true,
+        });
+
+        const backCanvas = await safeHtml2Canvas(backEl as HTMLElement, {
+          scale: 3,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          allowTaint: true,
+        });
+
+        // Calculate exact 2 mm margin in pixels based on card width (85.6 mm)
+        const mmInPixels = frontCanvas.width / 85.6;
+        const margin2mm = Math.round(mmInPixels * 2); // Exact 2 mm margin in pixels
+        const gap = margin2mm; // 2 mm gap between Front & Back
+        const padding = margin2mm; // 2 mm outer margin
+
+        const combinedWidth = frontCanvas.width + backCanvas.width + gap + (padding * 2);
+        const combinedHeight = Math.max(frontCanvas.height, backCanvas.height) + (padding * 2);
+
+        const combinedCanvas = document.createElement('canvas');
+        combinedCanvas.width = combinedWidth;
+        combinedCanvas.height = combinedHeight;
+
+        const ctx = combinedCanvas.getContext('2d');
+        if (ctx) {
+          // White background
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, combinedWidth, combinedHeight);
+
+          // Draw Front card on left with 2mm margin
+          ctx.drawImage(frontCanvas, padding, padding);
+
+          // Draw Back card on right with 2mm gap
+          ctx.drawImage(backCanvas, padding + frontCanvas.width + gap, padding);
+
+          const combinedDataUrl = combinedCanvas.toDataURL('image/jpeg', 0.98);
+          const link = document.createElement('a');
+          link.href = combinedDataUrl;
+          link.download = `Farmer_ID_PVC_Both_${safeName}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          setNotification('Front आणि Back दोन्ही बाजू २ mm मार्जिनसह एकाच JPG मध्ये डाऊनलोड झाल्या!');
+          setDownloadSuccess(true);
+          setTimeout(() => setDownloadSuccess(false), 3000);
+        } else {
+          throw new Error('कॅनव्हास तयार करताना अडचण आली.');
+        }
+      } else if (frontEl && viewMode !== 'back') {
+        // Single Front Image
+        const frontCanvas = await safeHtml2Canvas(frontEl as HTMLElement, {
+          scale: 3,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          allowTaint: true,
+        });
+
+        const frontDataUrl = frontCanvas.toDataURL('image/jpeg', 0.98);
+        const linkFront = document.createElement('a');
+        linkFront.href = frontDataUrl;
+        linkFront.download = `Farmer_ID_PVC_Front_${safeName}.jpg`;
+        document.body.appendChild(linkFront);
+        linkFront.click();
+        document.body.removeChild(linkFront);
+
+        setNotification('Front बाजूचा JPG फोटो डाऊनलोड झाला!');
+        setDownloadSuccess(true);
+        setTimeout(() => setDownloadSuccess(false), 3000);
+      } else if (backEl && viewMode !== 'front') {
+        // Single Back Image
+        const backCanvas = await safeHtml2Canvas(backEl as HTMLElement, {
+          scale: 3,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          allowTaint: true,
+        });
+
+        const backDataUrl = backCanvas.toDataURL('image/jpeg', 0.98);
+        const linkBack = document.createElement('a');
+        linkBack.href = backDataUrl;
+        linkBack.download = `Farmer_ID_PVC_Back_${safeName}.jpg`;
+        document.body.appendChild(linkBack);
+        linkBack.click();
+        document.body.removeChild(linkBack);
+
+        setNotification('Back बाजूचा JPG फोटो डाऊनलोड झाला!');
+        setDownloadSuccess(true);
+        setTimeout(() => setDownloadSuccess(false), 3000);
+      } else {
+        throw new Error('कार्ड घटक स्क्रीनवर सापडला नाही.');
       }
-
-      const canvas = await safeHtml2Canvas(targetEl as HTMLElement, {
-        scale: 3,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-        allowTaint: true,
-      });
-
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.98);
-      const link = document.createElement('a');
-      const safeName = (currentCard.fullNameEn || currentCard.fullNameMr || 'Farmer').replace(/[^a-zA-Z0-9_\u0900-\u097F]/g, '_');
-
-      link.href = dataUrl;
-      link.download = isMulti
-        ? `Farmer_All_${Math.min(cards.length, 5)}_Cards_A4_Sheet.jpg`
-        : `Farmer_ID_Card_${safeName}.jpg`;
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setNotification('JPG फोटो यशस्वीरित्या डाऊनलोड झाला!');
-      setDownloadSuccess(true);
-      setTimeout(() => setDownloadSuccess(false), 3000);
     } catch (err: any) {
       console.error('JPG export failed:', err);
       setNotification(`JPG डाऊनलोड करताना त्रुटी: ${err?.message || 'कृपया पुन्हा प्रयत्न करा'}`);

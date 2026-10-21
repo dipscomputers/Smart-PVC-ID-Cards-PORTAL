@@ -61,6 +61,7 @@ const TAB_INDEX_MAP: Record<string, PortalTab> = {
   '1': 'dashboard',
   '2': 'farmer-id',
   'p': 'passport-photo',
+  'r': 'photo-resizes',
   '3': 'maha-id',
   '4': 'adhar-card',
   '5': 'pan-card',
