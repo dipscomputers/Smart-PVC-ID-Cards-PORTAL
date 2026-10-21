@@ -64,6 +64,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       actionText: '⚡ शेतकरी आयडी बनवा',
     },
     {
+      id: 'my-qr-payment' as PortalTab,
+      title: 'My QR payment (POS)',
+      titleMr: 'दिप्स कॉम्पुटर्स POS & QR',
+      category: 'documents',
+      icon: QrCode,
+      color: 'emerald',
+      gradient: 'from-emerald-600 via-teal-600 to-emerald-900',
+      accentBorder: 'border-emerald-500/40 hover:border-emerald-500 dark:border-emerald-800/80',
+      badgeBg: 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
+      btnBg: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20',
+      badge: '💸 UPI QR & Cash Counter',
+      shortcut: 'F2 / Alt + 1',
+      desc: 'डायनामिक UPI पेमेंट क्यूआर जनरेटर, कॅश डिनॉमिनेशन मोजणी, मराठी अक्षरी रक्कम आणि व्हॉट्सॲप समरी.',
+      actionText: '⚡ POS ओपन करा',
+    },
+    {
       id: 'maha-id' as PortalTab,
       title: 'Maha ID Card',
       titleMr: 'महा आयडी कार्ड',
@@ -126,22 +142,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       shortcut: 'Alt + 4',
       desc: 'व्हॉट्सॲपवरून आलेल्या अस्पष्ट फोटो/डॉक्युरमेंट्सची ब्राईटनेस व क्रॉपिंग दुरुस्त करून A4 वर प्रिंट घ्या.',
       actionText: '⚡ दस्तऐवज सुधारा',
-    },
-    {
-      id: 'my-qr-payment' as PortalTab,
-      title: 'My QR payment (POS)',
-      titleMr: 'दिप्स कॉम्पुटर्स POS & QR',
-      category: 'documents',
-      icon: QrCode,
-      color: 'emerald',
-      gradient: 'from-emerald-600 via-teal-600 to-emerald-900',
-      accentBorder: 'border-emerald-500/40 hover:border-emerald-500 dark:border-emerald-800/80',
-      badgeBg: 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
-      btnBg: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20',
-      badge: '💸 UPI QR & Cash Counter',
-      shortcut: 'F2 / Alt + 1',
-      desc: 'डायनामिक UPI पेमेंट क्यूआर जनरेटर, कॅश डिनॉमिनेशन मोजणी, मराठी अक्षरी रक्कम आणि व्हॉट्सॲप समरी.',
-      actionText: '⚡ POS ओपन करा',
     },
     {
       id: 'adhar-card' as PortalTab,
@@ -362,6 +362,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
 
             {/* Quick Action Floating Action Glass Buttons */}
             <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+              {/* Button 1: My QR payment */}
+              <button
+                type="button"
+                onClick={() => onNavigate('my-qr-payment')}
+                className="w-full inline-flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white rounded-2xl font-black text-sm shadow-xl transition-all cursor-pointer transform hover:-translate-y-0.5 border border-emerald-300/40 active:scale-95"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-950 text-emerald-400 flex items-center justify-center font-bold shadow-xs shrink-0 border border-emerald-400/30">
+                    <QrCode className="w-5 h-5 text-emerald-300" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-bold text-emerald-100">POS & UPI QR</div>
+                    <div className="text-sm font-black text-white">My QR payment</div>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-white" />
+              </button>
+
+              {/* Button 2: Farmer ID Card */}
               <button
                 type="button"
                 onClick={() => onNavigate('farmer-id')}
@@ -373,27 +392,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                   </div>
                   <div className="text-left">
                     <div className="text-xs font-bold text-slate-800">१-क्लिक जनरेटर</div>
-                    <div className="text-sm font-black">शेतकरी ओळखपत्र बनवा</div>
+                    <div className="text-sm font-black text-slate-950">Farmer ID Card (शेतकरी ओळखपत्र)</div>
                   </div>
                 </div>
                 <ArrowRight className="w-5 h-5 text-slate-950" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('maha-id')}
-                className="w-full inline-flex items-center justify-between px-5 py-3.5 bg-white hover:bg-emerald-50 text-slate-900 rounded-2xl font-black text-sm shadow-lg transition-all cursor-pointer transform hover:-translate-y-0.5 border border-emerald-200 active:scale-95"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center shadow-xs shrink-0">
-                    <ShieldCheck className="w-5 h-5 text-emerald-200" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-xs font-bold text-emerald-700">MahaSarathi PDF</div>
-                    <div className="text-sm font-black text-slate-900">Maha ID Card बनवा</div>
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-emerald-700" />
               </button>
             </div>
           </div>

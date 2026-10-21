@@ -5,21 +5,19 @@ import {
   Coins, 
   Copy, 
   Check, 
-  Sparkles, 
   RotateCcw, 
   Clock, 
   CheckCircle2, 
   Share2, 
-  ArrowRight, 
   Banknote, 
   Delete, 
-  Smartphone, 
-  Building2, 
-  Printer, 
-  Zap,
-  Volume2,
-  VolumeX,
-  Settings
+  Volume2, 
+  VolumeX, 
+  Settings, 
+  X,
+  ArrowLeft,
+  RefreshCw,
+  Monitor
 } from 'lucide-react';
 import { numberToMarathiWords } from '../utils/marathiNumbers';
 import { playClickSound, playQrGeneratedChime, playSuccessChime } from '../utils/soundEffects';
@@ -28,16 +26,15 @@ interface NoteItem {
   value: number;
   label: string;
   icon: string;
-  color: string;
 }
 
 const DENOMINATIONS: NoteItem[] = [
-  { value: 500, label: '₹500', icon: '💵', color: 'from-stone-700 to-stone-900 border-stone-600' },
-  { value: 200, label: '₹200', icon: '💵', color: 'from-amber-700 to-orange-900 border-amber-600' },
-  { value: 100, label: '₹100', icon: '💵', color: 'from-indigo-700 to-purple-900 border-indigo-600' },
-  { value: 50, label: '₹50', icon: '💵', color: 'from-cyan-700 to-blue-900 border-cyan-600' },
-  { value: 20, label: '₹20', icon: '💵', color: 'from-emerald-700 to-teal-900 border-emerald-600' },
-  { value: 10, label: '₹10', icon: '🪙', color: 'from-amber-800 to-yellow-950 border-amber-700' },
+  { value: 500, label: '₹500', icon: '💵' },
+  { value: 200, label: '₹200', icon: '💵' },
+  { value: 100, label: '₹100', icon: '💵' },
+  { value: 50, label: '₹50', icon: '💵' },
+  { value: 20, label: '₹20', icon: '💵' },
+  { value: 10, label: '₹10', icon: '🪙' },
 ];
 
 export const MyQrPaymentSection: React.FC = () => {
@@ -49,7 +46,8 @@ export const MyQrPaymentSection: React.FC = () => {
 
   // Merchant & UPI Settings
   const [upiId, setUpiId] = useState<string>('dipscomputers@upi');
-  const [merchantName] = useState<string>('दिप्स कॉम्पुटर्स');
+  const [merchantName] = useState<string>('DIPS COMPUTERS');
+  const [merchantPhone] = useState<string>('+91 90491 02035');
   const [showUpiSettings, setShowUpiSettings] = useState<boolean>(false);
 
   // --- TAB 1: CALCULATOR STATE ---
@@ -78,7 +76,6 @@ export const MyQrPaymentSection: React.FC = () => {
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success'>('pending');
   const [transactionId, setTransactionId] = useState<string>('');
   const [copiedSummary, setCopiedSummary] = useState<boolean>(false);
-  const [copiedUpi, setCopiedUpi] = useState<boolean>(false);
 
   // Play sound wrapper
   const playSound = useCallback((fn: () => void) => {
@@ -91,7 +88,6 @@ export const MyQrPaymentSection: React.FC = () => {
   const evaluateEquation = useCallback((eq: string): number => {
     if (!eq.trim()) return 0;
     try {
-      // Replace visual operators with JS operators
       const cleaned = eq
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
@@ -117,7 +113,6 @@ export const MyQrPaymentSection: React.FC = () => {
       return;
     }
 
-    // If equation ends with an operator, evaluate prefix
     const safeEq = equation.replace(/[+\-×÷%]+$/, '');
     const evaluated = evaluateEquation(safeEq || equation);
     setLastCalculatedTotal(evaluated);
@@ -178,9 +173,9 @@ export const MyQrPaymentSection: React.FC = () => {
     
     QRCode.toDataURL(upiString, {
       width: 380,
-      margin: 2,
+      margin: 1,
       color: {
-        dark: '#0f172a',
+        dark: '#000000',
         light: '#ffffff',
       },
     })
@@ -213,10 +208,26 @@ export const MyQrPaymentSection: React.FC = () => {
   }, [showQrModal, timerSeconds, paymentStatus]);
 
   // Simulate Payment Success
-  const handleSimulateSuccess = () => {
+  const handleSimulateSuccess = useCallback(() => {
     playSound(playSuccessChime);
     setPaymentStatus('success');
-  };
+  }, [playSound]);
+
+  // Reset all amounts, calculations, and cash counts to 0
+  const resetAllAmounts = useCallback(() => {
+    setEquation('');
+    setDisplayAmount('0');
+    setLastCalculatedTotal(0);
+    setNoteCounts({
+      500: 0,
+      200: 0,
+      100: 0,
+      50: 0,
+      20: 0,
+      10: 0,
+    });
+    setPaymentStatus('pending');
+  }, []);
 
   // --- CASH COUNTER CALCULATIONS ---
   const calculateCashGrandTotal = useCallback(() => {
@@ -256,19 +267,16 @@ export const MyQrPaymentSection: React.FC = () => {
     });
   };
 
-  // Copy Summary to Clipboard (MANDATORY FORMAT EXPLOIT)
+  // Copy Summary to Clipboard
   const handleCopyCashSummary = () => {
     playSound(playClickSound);
 
     const now = new Date();
-    
-    // Format English date: DD/MM/YYYY
     const day = String(now.getDate()).padStart(2, '0');
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const year = now.getFullYear();
     const dateStr = `${day}/${month}/${year}`;
 
-    // Format English time: 12:18:25 PM
     let hours = now.getHours();
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const seconds = String(now.getSeconds()).padStart(2, '0');
@@ -276,7 +284,6 @@ export const MyQrPaymentSection: React.FC = () => {
     hours = hours % 12 || 12;
     const timeStr = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
 
-    // Build non-zero denomination lines
     const lines: string[] = [];
     DENOMINATIONS.forEach((note) => {
       const count = noteCounts[note.value] || 0;
@@ -308,11 +315,16 @@ ${breakdownText}
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept keyboard when typing in text inputs except Arrow Up/Down
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
-      // F2: Toggle Tab
+      // Space key inside QR Modal triggers Confirm Payment Done
+      if (showQrModal && paymentStatus === 'pending' && e.code === 'Space') {
+        e.preventDefault();
+        handleSimulateSuccess();
+        return;
+      }
+
       if (e.key === 'F2') {
         e.preventDefault();
         playSound(playClickSound);
@@ -320,7 +332,6 @@ ${breakdownText}
         return;
       }
 
-      // Alt + 1: Switch to UPI
       if (e.altKey && e.key === '1') {
         e.preventDefault();
         playSound(playClickSound);
@@ -328,7 +339,6 @@ ${breakdownText}
         return;
       }
 
-      // Alt + 2: Switch to Cash
       if (e.altKey && e.key === '2') {
         e.preventDefault();
         playSound(playClickSound);
@@ -336,7 +346,6 @@ ${breakdownText}
         return;
       }
 
-      // ArrowLeft / ArrowRight when no text input focused
       if (!isInput) {
         if (e.key === 'ArrowLeft' && activeSubTab === 'cash') {
           playSound(playClickSound);
@@ -350,9 +359,9 @@ ${breakdownText}
         }
       }
 
-      // Escape: Close Modal or Clear
       if (e.key === 'Escape') {
         if (showQrModal) {
+          resetAllAmounts();
           setShowQrModal(false);
           return;
         }
@@ -362,7 +371,6 @@ ${breakdownText}
         return;
       }
 
-      // Calculator Keys (when on UPI tab and not typing in modal/setting)
       if (activeSubTab === 'upi' && !showQrModal && !showUpiSettings) {
         if (e.key >= '0' && e.key <= '9') {
           handleCalcKeyPress(e.key);
@@ -405,9 +413,9 @@ ${breakdownText}
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeSubTab, showQrModal, showUpiSettings, lastCalculatedTotal, triggerQrGeneration, handleCalcKeyPress, playSound]);
+  }, [activeSubTab, showQrModal, paymentStatus, showUpiSettings, lastCalculatedTotal, triggerQrGeneration, handleCalcKeyPress, handleSimulateSuccess, playSound]);
 
-  // Handle Note Input Navigation with Up/Down Arrow Keys
+  // Handle Note Input Navigation
   const handleNoteInputKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -432,548 +440,571 @@ ${breakdownText}
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-3.5 py-2 text-slate-100 select-none">
+    <div className="py-2 flex justify-center items-center select-none font-sans">
       
-      {/* 1. APP BAR HEADER */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl backdrop-blur-md flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-700 text-white rounded-xl shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-400/30">
-            <Building2 className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-white">
-                दिप्स कॉम्पुटर्स (DIPs Computers POS)
-              </h1>
-              {/* LIVE INDICATOR BADGE */}
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>POS ACTIVE</span>
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              डायनामिक UPI क्युआर कोड आणि कॅश काउंटर • [F2/Alt+1/Alt+2 ने टॅब बदला]
-            </p>
-          </div>
-        </div>
-
-        {/* TOP RIGHT CONTROLS: SOUND TOGGLE & UPI ID SETTING */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-              soundEnabled
-                ? 'bg-slate-800 text-emerald-400 border-slate-700 hover:bg-slate-700'
-                : 'bg-slate-800/50 text-slate-500 border-slate-800 hover:text-slate-300'
-            }`}
-            title={soundEnabled ? 'साऊंड चालू (Sound On)' : 'साऊंड बंद (Sound Off)'}
-          >
-            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
-
-          <button
-            onClick={() => setShowUpiSettings(!showUpiSettings)}
-            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all"
-            title="UPI आयडी बदला"
-          >
-            <Settings className="w-4 h-4 text-emerald-400" />
-            <span className="hidden sm:inline font-mono">{upiId}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* UPI SETTINGS DROPDOWN POPUP */}
-      {showUpiSettings && (
-        <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-4 shadow-2xl space-y-3 animate-fadeIn">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-300">
-            <span>⚙️ UPI आयडी कॉन्फिगरेशन (UPI Merchant Settings)</span>
-            <button onClick={() => setShowUpiSettings(false)} className="text-slate-400 hover:text-white">✕</button>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <label className="block text-[11px] text-slate-400 mb-1">मर्चंट UPI ID (Payee VPA):</label>
-              <input
-                type="text"
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                placeholder="e.g. dipscomputers@upi"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={() => setShowUpiSettings(false)}
-                className="w-full sm:w-auto px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl cursor-pointer"
-              >
-                सेव्ह करा
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. DUAL TAB SELECTOR (UPI QR vs CASH COUNTER) */}
-      <div className="bg-slate-950 p-1.5 rounded-2xl border border-slate-800 flex items-center gap-2 shadow-inner">
-        <button
-          onClick={() => {
-            playSound(playClickSound);
-            setActiveSubTab('upi');
-          }}
-          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2.5 transition-all cursor-pointer ${
-            activeSubTab === 'upi'
-              ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/40'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
-          }`}
-        >
-          <QrCode className="w-4 h-4 text-emerald-300" />
-          <span>1. UPI क्युआर (UPI QR)</span>
-          <span className="hidden md:inline text-[10px] opacity-60 font-mono px-1.5 py-0.5 bg-black/30 rounded">Alt+1</span>
-        </button>
-
-        <button
-          onClick={() => {
-            playSound(playClickSound);
-            setActiveSubTab('cash');
-          }}
-          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2.5 transition-all cursor-pointer ${
-            activeSubTab === 'cash'
-              ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-lg shadow-blue-600/30 ring-1 ring-blue-400/40'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
-          }`}
-        >
-          <Coins className="w-4 h-4 text-blue-300" />
-          <span>2. कॅश मोजणी (Cash)</span>
-          <span className="hidden md:inline text-[10px] opacity-60 font-mono px-1.5 py-0.5 bg-black/30 rounded">Alt+2</span>
-        </button>
-      </div>
-
-      {/* ---------------- TAB 1: UPI QR CALCULATOR ---------------- */}
-      {activeSubTab === 'upi' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-5 animate-fadeIn">
-          
-          {/* HIGH CONTRAST LED DIGITAL DISPLAY */}
-          <div className="bg-slate-950 border-2 border-emerald-500/40 rounded-2xl p-4 sm:p-6 text-right shadow-inner relative overflow-hidden group">
-            <div className="absolute top-2 left-3 flex items-center gap-2 text-[11px] font-mono font-bold text-emerald-500/70 uppercase tracking-widest">
-              <Zap className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-              <span>DIGITAL CALCULATION DISPLAY</span>
-            </div>
-
-            {/* Live equation string */}
-            <div className="min-h-[28px] text-slate-400 text-sm sm:text-base font-mono tracking-wider overflow-x-auto whitespace-nowrap pt-3">
-              {equation || '0'}
-            </div>
-
-            {/* Formatted INR Amount */}
-            <div className="text-3xl sm:text-5xl font-black font-mono text-emerald-400 tracking-tight pt-1">
-              ₹{displayAmount}
-            </div>
-          </div>
-
-          {/* CALCULATOR KEYPAD GRID */}
-          <div className="grid grid-cols-4 gap-2 sm:gap-3">
-            {/* ROW 1 */}
-            <button
-              onClick={() => handleCalcKeyPress('C')}
-              className="py-3 sm:py-4 bg-rose-950/80 hover:bg-rose-900 text-rose-300 font-black text-sm sm:text-base rounded-2xl border border-rose-800/50 shadow-md active:scale-95 transition-all cursor-pointer"
-            >
-              C
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('%')}
-              className="py-3 sm:py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-black text-sm sm:text-base rounded-2xl border border-slate-700 shadow-md active:scale-95 transition-all cursor-pointer"
-            >
-              %
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('÷')}
-              className="py-3 sm:py-4 bg-indigo-900/60 hover:bg-indigo-800 text-indigo-300 font-black text-sm sm:text-base rounded-2xl border border-indigo-700/50 shadow-md active:scale-95 transition-all cursor-pointer"
-            >
-              ÷
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('BACKSPACE')}
-              className="py-3 sm:py-4 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-black text-sm sm:text-base rounded-2xl border border-amber-800/50 shadow-md active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-              title="मागे घ्या (Backspace)"
-            >
-              <Delete className="w-5 h-5" />
-            </button>
-
-            {/* ROW 2 */}
-            <button
-              onClick={() => handleCalcKeyPress('7')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              7
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('8')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              8
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('9')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              9
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('×')}
-              className="py-3 sm:py-4 bg-indigo-900/60 hover:bg-indigo-800 text-indigo-300 font-black text-sm sm:text-base rounded-2xl border border-indigo-700/50 shadow-md active:scale-95 transition-all cursor-pointer"
-            >
-              ×
-            </button>
-
-            {/* ROW 3 */}
-            <button
-              onClick={() => handleCalcKeyPress('4')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              4
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('5')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              5
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('6')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              6
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('-')}
-              className="py-3 sm:py-4 bg-indigo-900/60 hover:bg-indigo-800 text-indigo-300 font-black text-sm sm:text-base rounded-2xl border border-indigo-700/50 shadow-md active:scale-95 transition-all cursor-pointer"
-            >
-              -
-            </button>
-
-            {/* ROW 4 */}
-            <button
-              onClick={() => handleCalcKeyPress('1')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              1
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('2')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              2
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('3')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              3
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('+')}
-              className="py-3 sm:py-4 bg-indigo-900/60 hover:bg-indigo-800 text-indigo-300 font-black text-sm sm:text-base rounded-2xl border border-indigo-700/50 shadow-md active:scale-95 transition-all cursor-pointer"
-            >
-              +
-            </button>
-
-            {/* ROW 5 */}
-            <button
-              onClick={() => handleCalcKeyPress('0')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              0
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('.')}
-              className="py-3 sm:py-4 bg-slate-950 hover:bg-slate-800 text-white font-black text-lg sm:text-2xl rounded-2xl border border-slate-800 shadow-md active:scale-95 transition-all cursor-pointer font-mono"
-            >
-              .
-            </button>
-            <button
-              onClick={() => handleCalcKeyPress('=')}
-              className="col-span-2 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-base sm:text-lg rounded-2xl border border-blue-400/30 shadow-lg active:scale-95 transition-all cursor-pointer"
-            >
-              = (हिशोब)
-            </button>
-          </div>
-
-          {/* PRIMARY ACTION CTA: GENERATE QR */}
-          <button
-            onClick={() => triggerQrGeneration(lastCalculatedTotal)}
-            disabled={lastCalculatedTotal <= 0}
-            className={`w-full py-4 px-6 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-3 transition-all cursor-pointer shadow-xl ${
-              lastCalculatedTotal > 0
-                ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-emerald-500/25 ring-2 ring-emerald-400/50 active:scale-98'
-                : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
-            }`}
-          >
-            <QrCode className="w-6 h-6" />
-            <span>QR कोड तयार करा (Generate QR Code)</span>
-            <span className="font-mono text-sm bg-black/20 px-2.5 py-1 rounded-lg">
-              ₹{lastCalculatedTotal.toLocaleString('en-IN')}
-            </span>
-          </button>
-        </div>
-      )}
-
-      {/* ---------------- TAB 2: CASH DENOMINATION COUNTER ---------------- */}
-      {activeSubTab === 'cash' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-5 animate-fadeIn">
-          
-          {/* HEADER BAR FOR CASH COUNTER */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <Banknote className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-sm sm:text-base font-extrabold text-white">
-                कॅश मोजणी आणि लेजर (Cash Denomination Counter)
-              </h2>
-            </div>
-            <button
-              onClick={handleResetCashCounter}
-              className="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-              title="सर्व नोटा शून्य करा"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>रिफ्रेश / रिसेट</span>
-            </button>
-          </div>
-
-          {/* INTERACTIVE LEDGER GRID */}
-          <div className="space-y-2.5">
-            {DENOMINATIONS.map((note, index) => {
-              const count = noteCounts[note.value] || 0;
-              const subtotal = note.value * count;
-
-              return (
-                <div
-                  key={note.value}
-                  className="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-3 transition-all"
-                >
-                  {/* Column 1: Denomination Label */}
-                  <div className="w-24 sm:w-32 flex items-center gap-2 shrink-0">
-                    <span className="text-lg">{note.icon}</span>
-                    <span className="font-mono font-black text-base sm:text-lg text-white">
-                      {note.label}
-                    </span>
-                  </div>
-
-                  {/* Column 2: Interactive Numeric Input Box */}
-                  <div className="flex items-center gap-2 flex-1 max-w-[160px] sm:max-w-[200px]">
-                    <span className="text-slate-500 font-mono text-xs">×</span>
-                    <input
-                      ref={(el) => { noteInputRefs.current[index] = el; }}
-                      type="text"
-                      inputMode="numeric"
-                      value={count === 0 ? '' : count}
-                      onChange={(e) => handleNoteCountChange(note.value, e.target.value)}
-                      onKeyDown={(e) => handleNoteInputKeyDown(index, e)}
-                      placeholder="0"
-                      className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 rounded-xl px-3 py-2 text-center text-emerald-400 font-mono font-black text-base sm:text-lg focus:outline-none transition-all"
-                    />
-                    <span className="text-slate-500 text-xs hidden sm:inline">नोटा</span>
-                  </div>
-
-                  {/* Column 3: Calculated Subtotal */}
-                  <div className="w-28 sm:w-36 text-right font-mono font-black text-base sm:text-xl text-emerald-400 tabular-nums">
-                    ₹{subtotal.toLocaleString('en-IN')}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* MARATHI AMOUNT IN WORDS GRADIENT BANNER */}
-          <div className="bg-gradient-to-r from-emerald-950 via-slate-950 to-emerald-950 border border-emerald-500/30 rounded-2xl p-4 shadow-lg text-center space-y-1">
-            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest block">
-              अक्षरी रक्कम (AMOUNT IN MARATHI WORDS)
-            </span>
-            <div className="text-base sm:text-xl font-black text-white tracking-wide">
-              {marathiWords}
-            </div>
-          </div>
-
-          {/* LIVE TOTALS DASHBOARD */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-center">
-              <span className="text-xs text-slate-400 font-bold block mb-1">एकूण नोटा (Total Notes)</span>
-              <div className="text-2xl sm:text-3xl font-black font-mono text-white">
-                {totalNotesCount}
-              </div>
-            </div>
-
-            <div className="bg-slate-950 border border-emerald-500/40 rounded-2xl p-4 text-center">
-              <span className="text-xs text-emerald-400 font-bold block mb-1">एकूण कॅश रक्कम (Grand Total)</span>
-              <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
-                ₹{cashGrandTotal.toLocaleString('en-IN')}
-              </div>
-            </div>
-          </div>
-
-          {/* CASH ACTIONS (COPY SUMMARY & GENERATE QR) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            <button
-              onClick={handleCopyCashSummary}
-              className="py-3.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-100 font-black text-xs sm:text-sm rounded-2xl border border-slate-700 shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
-            >
-              {copiedSummary ? (
-                <>
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  <span className="text-emerald-400">कॉपी झाले (Copied!)</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4 text-emerald-400" />
-                  <span>तपशील कॉपी करा (Copy Summary)</span>
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={() => triggerQrGeneration(cashGrandTotal)}
-              disabled={cashGrandTotal <= 0}
-              className={`py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg ${
-                cashGrandTotal > 0
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-emerald-500/20 active:scale-95'
-                  : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
-              }`}
-            >
-              <QrCode className="w-4 h-4" />
-              <span>रक्कमेचा QR बनवा (Generate QR)</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------- PAYMENT QR & SUCCESS MODAL ---------------- */}
-      {showQrModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 text-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl relative">
+      {/* HIGH-TECH POS DEVICE FRAME MATCHING REFERENCE IMAGES */}
+      <div className="w-full max-w-[430px] bg-[#070913] border-2 border-slate-800/90 rounded-[38px] p-4 sm:p-5 shadow-2xl relative space-y-4 overflow-hidden">
+        
+        {/* IF QR MODAL IS ACTIVE (SHOW QR PAYMENT VIEW MATCHING REFERENCE) */}
+        {showQrModal ? (
+          <div className="space-y-3.5 animate-fadeIn text-white">
             
-            {/* MODAL HEADER */}
-            <div className="bg-slate-950 px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
-                  <QrCode className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-white">
-                    {merchantName} POS
-                  </h3>
-                  <p className="text-[11px] text-slate-400 font-mono">
-                    UPI: {upiId}
-                  </p>
-                </div>
-              </div>
-              
+            {/* TOP BAR HEADER */}
+            <div className="bg-[#0a0e1c] p-3 rounded-2xl border border-slate-800 flex items-center justify-between">
               <button
-                onClick={() => setShowQrModal(false)}
-                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                onClick={() => {
+                  playSound(playClickSound);
+                  resetAllAmounts();
+                  setShowQrModal(false);
+                }}
+                className="p-2 bg-[#131b2e] hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition-all cursor-pointer"
+                title="मागे जा (Back & Clear)"
               >
-                ✕
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+
+              <h2 className="text-xs sm:text-sm font-extrabold tracking-wide text-white">
+                UPI QR पेमेंट (PAY MERCHANT)
+              </h2>
+
+              <button
+                onClick={() => {
+                  playSound(playClickSound);
+                  resetAllAmounts();
+                  setShowQrModal(false);
+                }}
+                className="p-2 bg-[#131b2e] hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition-all cursor-pointer"
+                title="रिसेट व नवीन हिशोब"
+              >
+                <RefreshCw className="w-4 h-4" />
               </button>
             </div>
 
-            {/* MODAL BODY */}
-            <div className="p-6 text-center space-y-5">
-              {paymentStatus === 'pending' ? (
-                <>
-                  {/* EXACT AMOUNT BANNER */}
-                  <div className="bg-slate-950 border border-emerald-500/30 rounded-2xl p-3">
-                    <span className="text-xs text-slate-400 block mb-0.5">पेमेंटची रक्कम (Pay Amount):</span>
-                    <div className="text-3xl sm:text-4xl font-black font-mono text-emerald-400">
-                      ₹{qrAmount.toLocaleString('en-IN')}
-                    </div>
+            {paymentStatus === 'pending' ? (
+              <>
+                {/* TIMER CAPSULE BAR */}
+                <div className="bg-[#0d1222] border border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-xs font-bold text-slate-200">
+                  <div className="flex items-center gap-1.5 text-slate-300 text-[11px]">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    <span>QR कालमर्यादा (EXPIRES IN)</span>
+                  </div>
+                  <div className="bg-[#070b14] text-[#00d294] font-mono font-black text-xs px-2.5 py-1 rounded-lg tracking-wider border border-[#00d294]/30">
+                    {Math.floor(timerSeconds / 60).toString().padStart(2, '0')}:{String(timerSeconds % 60).padStart(2, '0')}
+                  </div>
+                </div>
+
+                {/* CENTRAL WHITE PAYMENT STANDEE CARD */}
+                <div className="bg-white rounded-[28px] p-5 pt-6 shadow-2xl border border-slate-200 text-slate-900 relative space-y-3.5 text-center overflow-hidden">
+                  
+                  {/* Top Gradient Accent Bar Seamless Overflow */}
+                  <div className="h-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-400 w-full absolute top-0 left-0 right-0" />
+
+                  {/* Merchant Logo / Monitor Icon */}
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-2xl shadow-md flex items-center justify-center mx-auto mt-1">
+                    <Monitor className="w-6 h-6 text-white" />
                   </div>
 
-                  {/* DYNAMIC QR CODE CONTAINER */}
-                  <div className="bg-white p-4 rounded-2xl shadow-xl inline-block border-4 border-slate-800 relative group">
+                  {/* Merchant Name & Phone */}
+                  <div>
+                    <h3 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
+                      {merchantName}
+                    </h3>
+                    <p className="text-xs font-bold text-indigo-600 font-mono mt-0.5">
+                      {merchantPhone}
+                    </p>
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-1.5">
+                      SCAN & PAY
+                    </p>
+                  </div>
+
+                  {/* Square High-Res QR Code Image */}
+                  <div className="p-2 border border-slate-200 rounded-2xl bg-white shadow-inner inline-block">
                     {qrDataUrl ? (
                       <img
                         src={qrDataUrl}
-                        alt="UPI Payment QR Code"
-                        className="w-56 h-56 sm:w-64 sm:h-64 object-contain mx-auto"
+                        alt="UPI QR Code"
+                        className="w-56 h-56 object-contain mx-auto"
                       />
                     ) : (
-                      <div className="w-56 h-56 flex items-center justify-center text-slate-400 font-bold text-xs">
+                      <div className="w-56 h-56 flex items-center justify-center text-slate-400 text-xs font-bold">
                         QR लोड होत आहे...
                       </div>
                     )}
                   </div>
 
-                  {/* COUNTDOWN TIMER */}
-                  <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-400 bg-amber-950/40 border border-amber-800/40 py-2 px-4 rounded-xl max-w-xs mx-auto">
-                    <Clock className="w-4 h-4 animate-spin" />
-                    <span>
-                      QR कालावधी: {Math.floor(timerSeconds / 60)}:{String(timerSeconds % 60).padStart(2, '0')} मिनिटे
+                  {/* Payable Amount Banner */}
+                  <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-teal-500 text-white p-3.5 rounded-2xl shadow-lg font-mono text-center space-y-0.5">
+                    <div className="text-[10px] font-extrabold text-teal-100 tracking-wider flex items-center justify-center gap-1.5 uppercase">
+                      <span className="w-2 h-2 rounded-full bg-teal-200 animate-pulse" />
+                      <span>देय रक्कम • PAYABLE AMOUNT</span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-baseline justify-center gap-1">
+                      <span>₹</span>
+                      <span>{qrAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Supported Payment App Logos Row */}
+                  <div className="flex items-center justify-center gap-3 pt-1 text-[11px] font-bold text-slate-600">
+                    <span className="font-extrabold tracking-tight text-slate-700">
+                      <span className="text-blue-500">G</span>
+                      <span className="text-red-500">P</span>
+                      <span className="text-yellow-500">a</span>
+                      <span className="text-emerald-500">y</span>
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    <span className="font-black italic text-sky-500">paytm</span>
+                    <span className="text-slate-300">•</span>
+                    <span className="font-extrabold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-md text-[10px]">
+                      पे PhonePe
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    <span className="font-bold text-[10px] bg-slate-900 text-white px-2 py-0.5 rounded-md">
+                      amazon pay
                     </span>
                   </div>
+                </div>
 
-                  {/* PAYMENT SIMULATOR BUTTON */}
+                {/* BOTTOM CONFIRM PAYMENT DONE BUTTON */}
+                <div className="bg-[#0d1222] p-2 rounded-2xl border border-slate-800">
                   <button
                     onClick={handleSimulateSuccess}
-                    className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-400/30 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+                    className="w-full py-3.5 px-4 bg-[#00c9a7] hover:bg-[#00b395] text-slate-950 font-black text-sm rounded-xl shadow-md flex items-center justify-between transition-all cursor-pointer active:scale-98"
                   >
-                    <CheckCircle2 className="w-5 h-5 text-emerald-300" />
-                    <span>पेमेंट तपासा / सिम्युलेट यश (Simulate Payment Success)</span>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-slate-950 stroke-[2.5]" />
+                      <span>Confirm Payment Done</span>
+                    </div>
+                    <span className="bg-black/20 text-slate-950 text-[10px] font-mono px-2 py-0.5 rounded font-bold">
+                      Space
+                    </span>
                   </button>
-                </>
-              ) : (
-                /* PAYMENT SUCCESS SCREEN */
-                <div className="space-y-5 py-4 animate-scaleUp">
-                  <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/30">
-                    <CheckCircle2 className="w-12 h-12 text-emerald-400 animate-bounce" />
-                  </div>
-
-                  <div>
-                    <h4 className="text-xl font-black text-emerald-400">
-                      पेमेंट यशस्वी झाले! (Payment Successful)
-                    </h4>
-                    <p className="text-xs text-slate-400 mt-1 font-mono">
-                      ट्रांसझॅक्शन ID: {transactionId}
-                    </p>
-                  </div>
-
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left text-xs space-y-1.5 font-mono">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">व्यापारी:</span>
-                      <span className="font-bold text-white">{merchantName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">रक्कम:</span>
-                      <span className="font-bold text-emerald-400 text-sm">₹{qrAmount.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">तारीख व वेळ:</span>
-                      <span className="text-slate-200">{new Date().toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        const text = `🖥️ *${merchantName} POS*\n\n✅ *पेमेंट पावती*\nरक्कम: ₹${qrAmount}/-\nTXN ID: ${transactionId}\nवेळ: ${new Date().toLocaleString()}\n\nधन्यवाद!`;
-                        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-                      }}
-                      className="flex-1 py-3 px-3 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span>WhatsApp पावती</span>
-                    </button>
-
-                    <button
-                      onClick={() => setShowQrModal(false)}
-                      className="flex-1 py-3 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl cursor-pointer"
-                    >
-                      नवीन पेमेंट
-                    </button>
+                </div>
+              </>
+            ) : (
+              /* PAYMENT SUCCESS CELEBRATION RECEIPT VIEW MATCHING REFERENCE IMAGE */
+              <div className="space-y-4 py-2 animate-scaleUp">
+                {/* DOUBLE RING GLOWING TEAL CHECKMARK */}
+                <div className="w-16 h-16 rounded-full bg-[#00c9a7]/15 border-2 border-[#00c9a7]/40 flex items-center justify-center mx-auto shadow-lg shadow-[#00c9a7]/20 my-2">
+                  <div className="w-10 h-10 rounded-full bg-[#00c9a7] text-[#070913] flex items-center justify-center font-bold shadow-md">
+                    <Check className="w-6 h-6 stroke-[3] text-[#070913]" />
                   </div>
                 </div>
-              )}
+
+                <div className="text-center space-y-1">
+                  <h4 className="text-base sm:text-lg font-black text-[#00c9a7] tracking-tight">
+                    पेमेंट यशस्वी झाले! (Successful)
+                  </h4>
+                  <p className="text-xs text-slate-400 font-mono tracking-wider">
+                    TXN: {transactionId}
+                  </p>
+                </div>
+
+                {/* RECEIPT TABLE SUMMARY */}
+                <div className="bg-[#0a0e1c] border border-slate-800/90 rounded-2xl p-4 text-xs font-mono space-y-2 text-slate-300 shadow-inner my-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 font-sans font-bold">व्यापारी:</span>
+                    <span className="font-extrabold text-white tracking-wide">{merchantName}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 font-sans font-bold">रक्कम:</span>
+                    <span className="font-extrabold text-[#00c9a7] text-base font-mono">₹{qrAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 font-sans font-bold">वेळ:</span>
+                    <span className="text-slate-200 font-mono text-[11px]">
+                      {new Date().toLocaleDateString('en-GB')}, {new Date().toLocaleTimeString('en-US', { hour12: false })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* ACTION BUTTONS ROW */}
+                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    onClick={() => {
+                      const text = `🖥️ *${merchantName}*\n\n✅ *पेमेंट पावती*\nरक्कम: ₹${qrAmount}/-\nTXN ID: ${transactionId}\nवेळ: ${new Date().toLocaleString()}\n\nधन्यवाद!`;
+                      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+                    }}
+                    className="py-3 px-3 bg-[#056846] hover:bg-[#045438] text-white font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Share2 className="w-4 h-4 text-white" />
+                    <span>WhatsApp पावती</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      playSound(playClickSound);
+                      resetAllAmounts();
+                      setShowQrModal(false);
+                    }}
+                    className="py-3 px-3 bg-[#131b2e] hover:bg-[#1a253e] text-slate-200 border border-slate-800 font-extrabold text-xs rounded-2xl flex items-center justify-center gap-1.5 shadow-md cursor-pointer active:scale-95 transition-all"
+                  >
+                    <span>नवीन पेमेंट</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* REGULAR CALCULATOR / CASH COUNTER VIEW */
+          <>
+            {/* 1. TOP DEVICE HEADER */}
+            <div className="flex items-center justify-between px-1 pt-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm sm:text-base font-black tracking-wider text-slate-100 uppercase">
+                  DIPS COMPUTERS POS
+                </h1>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* SOUND TOGGLE */}
+                <button
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className="p-1 text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+                  title={soundEnabled ? 'साऊंड चालू' : 'साऊंड बंद'}
+                >
+                  {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4" />}
+                </button>
+
+                {/* SETTINGS GEAR */}
+                <button
+                  onClick={() => setShowUpiSettings(!showUpiSettings)}
+                  className="p-1 text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+                  title="UPI मर्चंट सेटिंग्स"
+                >
+                  <Settings className="w-4 h-4 text-slate-300" />
+                </button>
+
+                {/* LIVE STATUS BADGE */}
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#10192d] border border-[#1c2c4e] rounded-full text-[11px] font-bold text-slate-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>LIVE</span>
+                </div>
+              </div>
             </div>
 
-          </div>
-        </div>
-      )}
+            {/* UPI SETTINGS MODAL DROPDOWN */}
+            {showUpiSettings && (
+              <div className="bg-[#0f1527] border border-slate-700/80 rounded-2xl p-3 shadow-2xl space-y-2 animate-fadeIn text-xs">
+                <div className="flex items-center justify-between font-bold text-slate-200">
+                  <span>⚙️ मर्चंट UPI VPA आयडी</span>
+                  <button onClick={() => setShowUpiSettings(false)} className="text-slate-400 hover:text-white">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  placeholder="e.g. dipscomputers@upi"
+                  className="w-full bg-[#070913] border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+            )}
+
+            {/* 2. DUAL SEGMENTED TAB SELECTOR (TEAL ACTIVE / DARK INACTIVE) */}
+            <div className="bg-[#0e1424] border border-slate-800/80 p-1.5 rounded-2xl flex items-center justify-between gap-1 shadow-inner">
+              <button
+                onClick={() => {
+                  playSound(playClickSound);
+                  setActiveSubTab('upi');
+                }}
+                className={`flex-1 py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  activeSubTab === 'upi'
+                    ? 'bg-[#00c9a7] text-slate-950 shadow-md ring-1 ring-teal-400/30 font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <QrCode className={`w-4 h-4 ${activeSubTab === 'upi' ? 'text-slate-950' : 'text-slate-400'}`} />
+                <span>UPI क्युआर (UPI QR)</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  playSound(playClickSound);
+                  setActiveSubTab('cash');
+                }}
+                className={`flex-1 py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  activeSubTab === 'cash'
+                    ? 'bg-[#00c9a7] text-slate-950 shadow-md ring-1 ring-teal-400/30 font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Banknote className={`w-4 h-4 ${activeSubTab === 'cash' ? 'text-slate-950' : 'text-slate-400'}`} />
+                <span>कॅश मोजणी (Cash)</span>
+              </button>
+            </div>
+
+            {/* ---------------- TAB 1: UPI QR CALCULATOR ---------------- */}
+            {activeSubTab === 'upi' && (
+              <div className="space-y-3.5 animate-fadeIn">
+                
+                {/* DIGITAL LED CALCULATION DISPLAY */}
+                <div className="bg-[#0a0e1c] border border-slate-800/80 rounded-2xl p-4 sm:p-5 min-h-[135px] flex flex-col justify-between text-right relative overflow-hidden shadow-inner">
+                  {/* Equation line */}
+                  <div className="min-h-[22px] text-slate-400 text-xs sm:text-sm font-mono tracking-wider overflow-x-auto whitespace-nowrap">
+                    {equation}
+                  </div>
+
+                  {/* Amount Display with Emerald Currency Symbol and Bold White Digits */}
+                  <div className="flex items-baseline justify-end gap-1.5 font-mono font-black pt-2">
+                    <span className="text-2xl sm:text-3xl text-[#00c9a7] font-extrabold">₹</span>
+                    <span className="text-4xl sm:text-5xl tracking-tight text-white">{displayAmount}</span>
+                  </div>
+                </div>
+
+                {/* 5x4 KEYPAD GRID */}
+                <div className="grid grid-cols-4 gap-2.5">
+                  {/* ROW 1 */}
+                  <button
+                    onClick={() => handleCalcKeyPress('C')}
+                    className="bg-[#240b17] hover:bg-[#330e20] border border-[#421429] text-rose-500 font-black text-lg py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs"
+                  >
+                    C
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('BACKSPACE')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-slate-300 py-3.5 sm:py-4 rounded-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer shadow-xs"
+                    title="Backspace"
+                  >
+                    <Delete className="w-5 h-5 text-slate-300" />
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('%')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-slate-300 font-bold text-base py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs"
+                  >
+                    %
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('÷')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-[#00c9a7] font-black text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs"
+                  >
+                    ÷
+                  </button>
+
+                  {/* ROW 2 */}
+                  <button
+                    onClick={() => handleCalcKeyPress('7')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono"
+                  >
+                    7
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('8')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono"
+                  >
+                    8
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('9')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono"
+                  >
+                    9
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('×')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-[#00c9a7] font-black text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs"
+                  >
+                    ×
+                  </button>
+
+                  {/* ROW 3 */}
+                  <button
+                    onClick={() => handleCalcKeyPress('4')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono"
+                  >
+                    4
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('5')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono"
+                  >
+                    5
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('6')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono"
+                  >
+                    6
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('-')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-[#00c9a7] font-black text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs"
+                  >
+                    -
+                  </button>
+
+                  {/* ROW 4 */}
+                  <button
+                    onClick={() => handleCalcKeyPress('1')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono"
+                  >
+                    1
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('2')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono"
+                  >
+                    2
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('3')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono"
+                  >
+                    3
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('+')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-[#00c9a7] font-black text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs"
+                  >
+                    +
+                  </button>
+
+                  {/* ROW 5 */}
+                  <button
+                    onClick={() => handleCalcKeyPress('0')}
+                    className="col-span-2 bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono text-center"
+                  >
+                    0
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('.')}
+                    className="bg-[#131b2e] hover:bg-[#1a253e] border border-slate-800 text-white font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs font-mono"
+                  >
+                    .
+                  </button>
+                  <button
+                    onClick={() => handleCalcKeyPress('=')}
+                    className="bg-[#0e2752] hover:bg-[#143267] border border-[#194082] text-sky-300 font-extrabold text-xl py-3.5 sm:py-4 rounded-2xl active:scale-95 transition-all cursor-pointer shadow-xs"
+                  >
+                    =
+                  </button>
+                </div>
+
+                {/* BOTTOM PRIMARY BUTTON (TEAL VIBRANT PILL) */}
+                <button
+                  onClick={() => triggerQrGeneration(lastCalculatedTotal)}
+                  disabled={lastCalculatedTotal <= 0}
+                  className={`w-full py-4 px-4 bg-[#00c9a7] hover:bg-[#00b395] text-slate-950 font-black text-sm sm:text-base rounded-2xl shadow-lg shadow-[#00c9a7]/20 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 mt-2 ${
+                    lastCalculatedTotal <= 0 ? 'opacity-60 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <Check className="w-5 h-5 stroke-[2.5]" />
+                  <span>QR कोड तयार करा (Generate QR)</span>
+                </button>
+              </div>
+            )}
+
+            {/* ---------------- TAB 2: CASH DENOMINATION COUNTER ---------------- */}
+            {activeSubTab === 'cash' && (
+              <div className="space-y-3.5 animate-fadeIn">
+                
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Banknote className="w-4 h-4 text-[#00c9a7]" />
+                    <span>कॅश मोजणी व लेजर (Cash Counter)</span>
+                  </span>
+                  <button
+                    onClick={handleResetCashCounter}
+                    className="text-[11px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1 bg-[#1d1017] border border-[#3e1b2b] px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>रिसेट</span>
+                  </button>
+                </div>
+
+                {/* LEDGER GRID */}
+                <div className="space-y-2">
+                  {DENOMINATIONS.map((note, index) => {
+                    const count = noteCounts[note.value] || 0;
+                    const subtotal = note.value * count;
+
+                    return (
+                      <div
+                        key={note.value}
+                        className="bg-[#0a0e1c] border border-slate-800/80 rounded-2xl p-2.5 flex items-center justify-between gap-2"
+                      >
+                        <div className="w-20 flex items-center gap-1.5">
+                          <span className="text-base">{note.icon}</span>
+                          <span className="font-mono font-extrabold text-sm text-white">{note.label}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1 flex-1 max-w-[130px]">
+                          <span className="text-slate-500 font-mono text-xs">×</span>
+                          <input
+                            ref={(el) => { noteInputRefs.current[index] = el; }}
+                            type="text"
+                            inputMode="numeric"
+                            value={count === 0 ? '' : count}
+                            onChange={(e) => handleNoteCountChange(note.value, e.target.value)}
+                            onKeyDown={(e) => handleNoteInputKeyDown(index, e)}
+                            placeholder="0"
+                            className="w-full bg-[#131b2e] border border-slate-700/80 focus:border-[#00c9a7] rounded-xl px-2 py-1.5 text-center text-[#00c9a7] font-mono font-extrabold text-sm focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="w-24 text-right font-mono font-extrabold text-sm text-[#00c9a7] tabular-nums">
+                          ₹{subtotal.toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* MARATHI WORDS BANNER */}
+                <div className="bg-[#0a0e1c] border border-emerald-500/30 rounded-2xl p-3 text-center space-y-0.5">
+                  <span className="text-[10px] font-bold text-[#00c9a7] uppercase tracking-widest block">
+                    अक्षरी रक्कम (AMOUNT IN WORDS)
+                  </span>
+                  <div className="text-sm font-extrabold text-white">
+                    {marathiWords}
+                  </div>
+                </div>
+
+                {/* DASHBOARD TOTALS */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-[#0a0e1c] border border-slate-800/80 rounded-2xl p-3 text-center">
+                    <span className="text-[11px] text-slate-400 font-bold block">एकूण नोटा</span>
+                    <div className="text-xl font-extrabold font-mono text-white mt-0.5">{totalNotesCount}</div>
+                  </div>
+
+                  <div className="bg-[#0a0e1c] border border-emerald-500/30 rounded-2xl p-3 text-center">
+                    <span className="text-[11px] text-[#00c9a7] font-bold block">एकूण रक्कम</span>
+                    <div className="text-xl font-extrabold font-mono text-[#00c9a7] mt-0.5">
+                      ₹{cashGrandTotal.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ACTIONS */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    onClick={handleCopyCashSummary}
+                    className="py-3 px-3 bg-[#131b2e] hover:bg-[#1a253e] border border-slate-700/80 text-slate-200 font-extrabold text-xs rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                  >
+                    {copiedSummary ? <Check className="w-4 h-4 text-[#00c9a7]" /> : <Copy className="w-4 h-4 text-[#00c9a7]" />}
+                    <span>{copiedSummary ? 'कॉपी झाले!' : 'तपशील कॉपी करा'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => triggerQrGeneration(cashGrandTotal)}
+                    disabled={cashGrandTotal <= 0}
+                    className={`py-3 px-3 bg-[#00c9a7] hover:bg-[#00b395] text-slate-950 font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all ${
+                      cashGrandTotal <= 0 ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    <QrCode className="w-4 h-4 text-slate-950" />
+                    <span>रक्कमेचा QR बनवा</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* BOTTOM SMARTPHONE HOME INDICATOR BAR */}
+        <div className="w-24 h-1 bg-slate-800/80 rounded-full mx-auto my-1" />
+      </div>
 
     </div>
   );

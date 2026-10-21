@@ -21,9 +21,11 @@ import {
   HardHat,
   MessageSquare,
   Maximize2,
-  QrCode
+  QrCode,
+  LogOut
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 export type PortalTab = 'dashboard' | 'farmer-id' | 'passport-photo' | 'photo-resizes' | 'whatsapp-print' | 'my-qr-payment' | 'maha-id' | 'adhar-card' | 'pan-card' | 'electoral-card' | 'mera-rashan-card' | 'ayushman-card' | 'abha-card' | 'eshram-card' | 'pocra-consent' | 'swayam-ghoshana';
 
@@ -44,6 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClose,
 }) => {
   const { theme, setTheme } = useTheme();
+  const { logout } = useAuth();
   const [profilePhoto, setProfilePhoto] = useState<string>(() => {
     const saved = localStorage.getItem('dips_farmer_profile_photo');
     // If saved photo is empty or the old unsplash link, use the new custom user profile photo
@@ -81,6 +84,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: LayoutDashboard,
     },
     {
+      id: 'my-qr-payment' as PortalTab,
+      label: 'My QR payment',
+      icon: QrCode,
+    },
+    {
       id: 'farmer-id' as PortalTab,
       label: 'Farmer ID Card',
       icon: Sprout,
@@ -99,11 +107,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'whatsapp-print' as PortalTab,
       label: 'Whatsapp Print',
       icon: MessageSquare,
-    },
-    {
-      id: 'my-qr-payment' as PortalTab,
-      label: 'My QR payment',
-      icon: QrCode,
     },
     {
       id: 'maha-id' as PortalTab,
@@ -261,8 +264,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </nav>
         </div>
 
-        {/* Bottom Sidebar Footer: Shop Address, Theme Switcher & Copyright */}
+        {/* Bottom Sidebar Footer: Shop Address, Theme Switcher, Logout & Copyright */}
         <div className="p-4 border-t border-white/10 dark:border-slate-800 text-center space-y-2.5 bg-black/20 dark:bg-slate-950/60">
+          {/* Prominent Sidebar Logout Button */}
+          <button
+            type="button"
+            onClick={logout}
+            className="w-full py-2 px-3 bg-red-600/90 hover:bg-red-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4 text-white" />
+            <span>लॉगआऊट करा (Logout)</span>
+          </button>
+
           {/* Quick Theme Switcher */}
           <div className="flex items-center justify-center gap-1 bg-black/35 p-1 rounded-xl">
             <button

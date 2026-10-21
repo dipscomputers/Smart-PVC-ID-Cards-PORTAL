@@ -3,6 +3,8 @@ import { initialFormData, screenshotFarmersList } from './utils/sampleData';
 import { FarmerFormData } from './types/form';
 import { useTheme } from './context/ThemeContext';
 import { ShortcutsProvider } from './context/ShortcutsContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginScreen } from './components/LoginScreen';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { TopNavbar } from './components/TopNavbar';
 import { Sidebar, PortalTab } from './components/Sidebar';
@@ -23,7 +25,8 @@ import { ElectoralCardSection } from './components/ElectoralCardSection';
 import { PocraConsentSection } from './components/PocraConsentSection';
 import { SwayamGhoshanaSection } from './components/SwayamGhoshanaSection';
 
-export default function App() {
+function AppContent() {
+  const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<PortalTab>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { toggleTheme } = useTheme();
@@ -44,6 +47,10 @@ export default function App() {
   useEffect(() => {
     document.getElementById('app-print-portal')?.remove();
   }, []);
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
 
   return (
     <ShortcutsProvider
@@ -161,5 +168,13 @@ export default function App() {
         <KeyboardShortcutsModal />
       </div>
     </ShortcutsProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
