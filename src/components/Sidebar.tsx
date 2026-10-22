@@ -37,7 +37,7 @@ interface SidebarProps {
 }
 
 // Default profile avatar image provided by user
-const DEFAULT_FARMER_AVATAR = 'https://blogger.googleusercontent.com/img/a/AVvXsEgnbNMNM_EqpDyQSqW9ncSuuuTWPL4O3qTCxY6bRvfwp5r83CtUsP0FYf19hveo9KcTlvujYd5Wobnjz1nRO0-ZolOim5gRImhZQmhKHIWcrqKf6RDoQVoYwrgUxT0a6SPdBs975K3dLArV9nocqTXzCaJ92561kvcyQXbbvUSh5TwkHp7wSixT1fs-kDAR=s1600';
+const DEFAULT_FARMER_AVATAR = 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjInPvqJ1dHyCflTorZ2IV7yQMsJ5d2WiA65otxZsReK0RKZfHhdm4_I3w97X2ku0w-sijAkj17eFZBaLAbJj0Jqzrs8qGv76G2e0ReEDn89TnlRcZqcdWwlU2EkXuJihUK1dhZNoFNIWNVvSeI_1xSwcNuyTQtocDuRNZwe5iW1yloT8cUeH6BLF70C5Rs/s814/file_enhanced.jpg';
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
@@ -196,18 +196,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <X className="w-5 h-5" />
             </button>
 
-            {/* Full Logo Avatar Display (No Borders, Full Visibility, No Hover Change Button) */}
-            <div className="w-24 h-24 mx-auto mb-3 flex items-center justify-center">
-              {profilePhoto && profilePhoto.trim() !== '' ? (
-                <img
-                  src={profilePhoto}
-                  alt="DIPs Computers Logo"
-                  className="w-full h-full object-contain p-0.5 drop-shadow-md"
-                  onError={() => setProfilePhoto(DEFAULT_FARMER_AVATAR)}
-                />
-              ) : (
-                <User className="w-12 h-12 text-white/90" />
-              )}
+            {/* Official Shop Logo Display (Transparent Background) */}
+            <div className="w-24 h-24 mx-auto mb-3 flex items-center justify-center shrink-0">
+              <img
+                src="https://blogger.googleusercontent.com/img/a/AVvXsEgnbNMNM_EqpDyQSqW9ncSuuuTWPL4O3qTCxY6bRvfwp5r83CtUsP0FYf19hveo9KcTlvujYd5Wobnjz1nRO0-ZolOim5gRImhZQmhKHIWcrqKf6RDoQVoYwrgUxT0a6SPdBs975K3dLArV9nocqTXzCaJ92561kvcyQXbbvUSh5TwkHp7wSixT1fs-kDAR=s1600"
+                alt="दिप्स कॉम्प्युटर्स लोगो"
+                className="w-full h-full object-contain filter drop-shadow-md"
+              />
             </div>
 
             {/* दिप्स कॉम्प्युटर्स & दिपक मा. खंदारे (पाटील) */}

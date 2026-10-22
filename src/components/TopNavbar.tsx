@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Menu, Phone, Sun, Moon, Keyboard, LogOut, KeyRound, UserCheck } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Menu, Phone, Sun, Moon, Keyboard, LogOut, KeyRound, UserCheck, ChevronDown, HelpCircle, Shield, User } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useShortcuts } from '../context/ShortcutsContext';
 import { useAuth } from '../context/AuthContext';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { UserProfileModal } from './UserProfileModal';
 
 interface TopNavbarProps {
   onToggleSidebar: () => void;
@@ -18,13 +19,40 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   const { openHelp } = useShortcuts();
   const { user, logout } = useAuth();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside or Escape key
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isDropdownOpen]);
 
   return (
     <>
       <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs no-print transition-colors duration-200">
         <div className="w-full px-2 sm:px-4 lg:px-6 py-2 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3">
           
-          {/* Top Row / Left Section: Hamburger + Custom Logo & Shop Title */}
+          {/* Left Section: Hamburger + Custom Logo & Shop Title */}
           <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2.5 shrink-0">
             <div className="flex items-center gap-2.5">
               {/* Hamburger toggle button */}
@@ -72,40 +100,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             </p>
           </div>
 
-          {/* Right Section: Exact Styled Pill Buttons matching image_344245ff.png */}
-          <div className="w-full sm:w-auto flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none shrink-0 justify-start sm:justify-end">
+          {/* Right Section: Header Controls & Profile Avatar Dropdown (No overflow clip) */}
+          <div className="w-full sm:w-auto flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0 justify-start sm:justify-end relative">
             
-            {/* 1. Operator Profile Pill (Matches exact green outline pill in image_344245ff.png) */}
-            {user && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-bold whitespace-nowrap shadow-2xs">
-                <UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>{user.name}</span>
-              </div>
-            )}
-
-            {/* 2. Password Change Pill (Matches exact light blue outline pill in image_344245ff.png) */}
-            <button
-              type="button"
-              onClick={() => setIsChangePasswordOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold whitespace-nowrap shadow-2xs cursor-pointer transition-all active:scale-95"
-              title="पासवर्ड बदला (Change Password)"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>पासवर्ड बदला</span>
-            </button>
-
-            {/* 3. Logout Pill - Prominent & Visible on Mobile & Desktop (Matches exact red pill in image_344245ff.png) */}
-            <button
-              type="button"
-              onClick={logout}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 hover:bg-red-100 dark:bg-red-950/60 dark:hover:bg-red-900/80 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-bold whitespace-nowrap shadow-2xs cursor-pointer transition-all active:scale-95"
-              title="लॉगआउट करा (Logout)"
-            >
-              <LogOut className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0" />
-              <span>लॉगआऊट</span>
-            </button>
-
-            {/* 4. Shortcuts Pill (Matches green pill with [?] in image_344245ff.png) */}
+            {/* Shortcuts Pill */}
             <button
               type="button"
               onClick={openHelp}
@@ -119,7 +117,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
               </kbd>
             </button>
 
-            {/* 5. Theme Toggle Pill (Matches light blue pill in image_344245ff.png) */}
+            {/* Theme Toggle Pill */}
             <button
               type="button"
               onClick={toggleTheme}
@@ -139,19 +137,149 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
               )}
             </button>
 
-            {/* 6. Contact Phone Red Pill (Matches exact red phone pill in image_344245ff.png) */}
-            <a
-              href="tel:9049102035"
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#c22d2d] hover:bg-[#a62222] text-white rounded-full text-xs font-bold shadow-xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
-              title="दिपक खंदारे (पाटील) - 9049102035"
-            >
-              <Phone className="w-3.5 h-3.5 text-white shrink-0" />
-              <span>9049102035</span>
-            </a>
+
+            {/* Profile Avatar Trigger & Dropdown Menu (Matches image_8a235c47.png design in clean English) */}
+            {user && (
+              <div className="relative shrink-0 ml-1" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen((prev) => !prev)}
+                  className="flex items-center gap-2 p-1 sm:px-3 sm:py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 transition-all cursor-pointer shadow-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500/50 group"
+                  aria-expanded={isDropdownOpen}
+                  title="Operator Profile Menu"
+                >
+                  {/* Profile Avatar Circle with Ring */}
+                  <div className="relative w-9 h-9 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-sm shadow-xs border-2 border-emerald-400 dark:border-emerald-500 overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
+                    <User className="w-4.5 h-4.5 text-white/90" />
+                    <img
+                      src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjInPvqJ1dHyCflTorZ2IV7yQMsJ5d2WiA65otxZsReK0RKZfHhdm4_I3w97X2ku0w-sijAkj17eFZBaLAbJj0Jqzrs8qGv76G2e0ReEDn89TnlRcZqcdWwlU2EkXuJihUK1dhZNoFNIWNVvSeI_1xSwcNuyTQtocDuRNZwe5iW1yloT8cUeH6BLF70C5Rs/s814/file_enhanced.jpg"
+                      alt={user.name}
+                      className="absolute inset-0 w-full h-full object-cover object-center rounded-full"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-black text-emerald-950 dark:text-emerald-100 max-w-[130px] truncate">
+                    {user.name}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-emerald-700 dark:text-emerald-300 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown Popover Card (Sleek Clean Design in English) */}
+                {isDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200/90 dark:border-slate-800 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    
+                    {/* User Info Header */}
+                    <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800/80 flex items-center gap-3 bg-slate-50/60 dark:bg-slate-800/40">
+                      <div className="relative w-11 h-11 rounded-full bg-emerald-100 dark:bg-emerald-950 border-2 border-emerald-500 dark:border-emerald-600 flex items-center justify-center text-emerald-800 dark:text-emerald-300 font-black text-sm shrink-0 overflow-hidden shadow-xs">
+                        <Shield className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                        <img
+                          src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjInPvqJ1dHyCflTorZ2IV7yQMsJ5d2WiA65otxZsReK0RKZfHhdm4_I3w97X2ku0w-sijAkj17eFZBaLAbJj0Jqzrs8qGv76G2e0ReEDn89TnlRcZqcdWwlU2EkXuJihUK1dhZNoFNIWNVvSeI_1xSwcNuyTQtocDuRNZwe5iW1yloT8cUeH6BLF70C5Rs/s814/file_enhanced.jpg"
+                          alt={user.name}
+                          className="absolute inset-0 w-full h-full object-cover object-center rounded-full"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-sm font-black text-gray-900 dark:text-slate-100 truncate leading-tight">
+                          {user.name}
+                        </p>
+                        <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold truncate flex items-center gap-1.5 mt-0.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                          {user.shopName}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Menu Options Section 1 */}
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          setIsProfileOpen(true);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-800 dark:text-slate-200 hover:bg-emerald-50/80 dark:hover:bg-slate-800 flex items-center gap-3 transition-colors cursor-pointer group"
+                      >
+                        <UserCheck className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
+                        <span>Profile</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          setIsChangePasswordOpen(true);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-800 dark:text-slate-200 hover:bg-emerald-50/80 dark:hover:bg-slate-800 flex items-center gap-3 transition-colors cursor-pointer group"
+                      >
+                        <KeyRound className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                        <span>Change Password</span>
+                      </button>
+                    </div>
+
+                    <div className="border-t border-gray-100 dark:border-slate-800/80 my-1"></div>
+
+                    {/* Menu Options Section 2 */}
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          openHelp();
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-800 dark:text-slate-200 hover:bg-emerald-50/80 dark:hover:bg-slate-800 flex items-center gap-3 transition-colors cursor-pointer group"
+                      >
+                        <HelpCircle className="w-4.5 h-4.5 text-sky-600 dark:text-sky-400 group-hover:scale-110 transition-transform" />
+                        <span>Guide & Shortcuts</span>
+                      </button>
+
+                      <a
+                        href="tel:9049102035"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-800 dark:text-slate-200 hover:bg-emerald-50/80 dark:hover:bg-slate-800 flex items-center gap-3 transition-colors cursor-pointer group"
+                      >
+                        <Phone className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
+                        <span>Help Center (9049102035)</span>
+                      </a>
+                    </div>
+
+                    <div className="border-t border-gray-100 dark:border-slate-800/80 my-1"></div>
+
+                    {/* Menu Options Section 3: Logout */}
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          logout();
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-3 transition-colors cursor-pointer group"
+                      >
+                        <LogOut className="w-4.5 h-4.5 text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
 
         </div>
       </header>
+
+      {/* Operator User Profile Modal */}
+      <UserProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        onChangePasswordOpen={() => setIsChangePasswordOpen(true)}
+      />
 
       {/* Change Password Modal */}
       <ChangePasswordModal
@@ -161,3 +289,5 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     </>
   );
 };
+
+

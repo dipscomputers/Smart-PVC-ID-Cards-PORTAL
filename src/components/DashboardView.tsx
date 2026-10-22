@@ -31,7 +31,6 @@ import {
   CheckCircle2,
   ShieldAlert,
   Printer,
-  Sparkle,
   Compass,
   QrCode
 } from 'lucide-react';
@@ -437,6 +436,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           })}
         </div>
       </div>
+
 
       {/* ================= 3. ALL SERVICES CATALOG GRID ================= */}
       <div className="space-y-6">
