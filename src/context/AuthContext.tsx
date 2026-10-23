@@ -19,6 +19,8 @@ interface AuthContextType {
   changePassword: (oldP: string, newP: string) => { success: boolean; message: string };
   resetDefaultCredentials: () => void;
   getTodaysOTP: () => string;
+  autoLogoutNotice: string | null;
+  clearAutoLogoutNotice: () => void;
 }
 
 const DEFAULT_USERNAME = 'dips';
@@ -30,6 +32,9 @@ const DEFAULT_USER: AuthUser = {
   mobile: '9049102035',
   role: 'Admin / Operator',
 };
+
+// 30 Minutes Inactivity Auto-Logout Duration
+const AUTO_LOGOUT_TIMEOUT_MS = 30 * 60 * 1000; // 30 Minutes = 1,800,000 ms
 
 // Allowed default credentials requested by user
 export const ALLOWED_USER_IDS = ['dips', 'dipscom', '9049102035', 'admin'];
@@ -63,6 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem('dips_saved_password') || DEFAULT_PASSWORD;
   });
 
+  const [autoLogoutNotice, setAutoLogoutNotice] = useState<string | null>(null);
+
   const [user, setUser] = useState<AuthUser | null>(() => {
     const saved = localStorage.getItem('dips_user_data');
     if (saved) {
@@ -81,6 +88,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       localStorage.removeItem('dips_is_authenticated');
     }
+  }, [isAuthenticated]);
+
+  // 30 Minutes Inactivity Timer & Event Listeners
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let timeoutId: NodeJS.Timeout;
+
+    const performAutoLogout = () => {
+      setIsAuthenticated(false);
+      localStorage.removeItem('dips_is_authenticated');
+      localStorage.removeItem('dips_last_activity_timestamp');
+      setAutoLogoutNotice('३० मिनिटांच्या निष्क्रियतेमुळे सुरक्षा कारणास्तव ऑटो-लॉगआउट झाले आहे! (Auto Logged Out after 30 mins)');
+    };
+
+    const resetTimer = () => {
+      localStorage.setItem('dips_last_activity_timestamp', String(Date.now()));
+      if (timeoutId) clearTimeout(timeoutId);
+
+      timeoutId = setTimeout(() => {
+        performAutoLogout();
+      }, AUTO_LOGOUT_TIMEOUT_MS);
+    };
+
+    // Check on initial mount or tab resume
+    const savedLastActivity = localStorage.getItem('dips_last_activity_timestamp');
+    if (savedLastActivity) {
+      const elapsed = Date.now() - Number(savedLastActivity);
+      if (elapsed >= AUTO_LOGOUT_TIMEOUT_MS) {
+        performAutoLogout();
+        return;
+      }
+    }
+
+    resetTimer();
+
+    // Throttled activity listener
+    let lastResetTime = Date.now();
+    const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastResetTime > 2000) {
+        lastResetTime = now;
+        resetTimer();
+      }
+    };
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    activityEvents.forEach((evt) => window.addEventListener(evt, handleActivity, { passive: true }));
+
+    // Periodic heartbeat check every 15 seconds
+    const intervalId = setInterval(() => {
+      const lastAct = Number(localStorage.getItem('dips_last_activity_timestamp') || Date.now());
+      if (Date.now() - lastAct >= AUTO_LOGOUT_TIMEOUT_MS) {
+        performAutoLogout();
+      }
+    }, 15000);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+      activityEvents.forEach((evt) => window.removeEventListener(evt, handleActivity));
+    };
   }, [isAuthenticated]);
 
   const validateCredentials = (u: string, p: string) => {
@@ -132,8 +201,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setIsAuthenticated(true);
     setUser(DEFAULT_USER);
+    setAutoLogoutNotice(null);
     localStorage.setItem('dips_is_authenticated', 'true');
     localStorage.setItem('dips_user_data', JSON.stringify(DEFAULT_USER));
+    localStorage.setItem('dips_last_activity_timestamp', String(Date.now()));
     return { success: true, message: 'लॉगिन आणि OTP पडताळणी यशस्वी झाली!' };
   };
 
@@ -142,8 +213,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (credRes.success) {
       setIsAuthenticated(true);
       setUser(DEFAULT_USER);
+      setAutoLogoutNotice(null);
       localStorage.setItem('dips_is_authenticated', 'true');
       localStorage.setItem('dips_user_data', JSON.stringify(DEFAULT_USER));
+      localStorage.setItem('dips_last_activity_timestamp', String(Date.now()));
       return { success: true, message: 'लॉगिन यशस्वी झाले!' };
     }
     return credRes;
@@ -152,6 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('dips_is_authenticated');
+    localStorage.removeItem('dips_last_activity_timestamp');
   };
 
   const changePassword = (oldP: string, newP: string) => {
@@ -180,6 +254,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('dips_saved_password', DEFAULT_PASSWORD);
   };
 
+  const clearAutoLogoutNotice = () => {
+    setAutoLogoutNotice(null);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -193,6 +271,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         changePassword,
         resetDefaultCredentials,
         getTodaysOTP,
+        autoLogoutNotice,
+        clearAutoLogoutNotice,
       }}
     >
       {children}
@@ -207,3 +287,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

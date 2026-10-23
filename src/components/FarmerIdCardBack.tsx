@@ -88,7 +88,7 @@ export const FarmerIdCardBack: React.FC<CardBackProps> = ({ card, isPrintMode = 
         boxSizing: 'border-box',
         backgroundColor: '#dcf0df',
         color: '#111827',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontFamily: 'Arial, Helvetica, "Segoe UI", Roboto, "Noto Sans Devanagari", "Mangal", sans-serif',
         position: 'relative',
         overflow: 'hidden',
         userSelect: 'none',

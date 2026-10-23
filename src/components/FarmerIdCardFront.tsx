@@ -98,7 +98,7 @@ export const FarmerIdCardFront: React.FC<CardFrontProps> = ({
         backgroundSize: '100% 100%',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: 'Arial, Helvetica, "Segoe UI", Roboto, "Noto Sans Devanagari", "Mangal", sans-serif',
       }}
     >
       {/* 1. LEFT: PASSPORT PHOTOGRAPH (Compact, exact 3:4 passport ratio, aligned cleanly below top header) */}

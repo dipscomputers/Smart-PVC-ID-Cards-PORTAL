@@ -6,7 +6,7 @@ import { playClickSound, playSuccessChime } from '../utils/soundEffects';
 export const USER_LOGO_URL = 'https://blogger.googleusercontent.com/img/a/AVvXsEgnbNMNM_EqpDyQSqW9ncSuuuTWPL4O3qTCxY6bRvfwp5r83CtUsP0FYf19hveo9KcTlvujYd5Wobnjz1nRO0-ZolOim5gRImhZQmhKHIWcrqKf6RDoQVoYwrgUxT0a6SPdBs975K3dLArV9nocqTXzCaJ92561kvcyQXbbvUSh5TwkHp7wSixT1fs-kDAR=s1600';
 
 export const LoginScreen: React.FC = () => {
-  const { validateCredentials, verifyOTPAndLogin } = useAuth();
+  const { validateCredentials, verifyOTPAndLogin, autoLogoutNotice, clearAutoLogoutNotice } = useAuth();
 
   // Step 1 or Step 2 state
   const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
@@ -221,6 +221,23 @@ export const LoginScreen: React.FC = () => {
               className="w-12 h-12 object-contain rounded-xl border border-slate-200 dark:border-slate-700 p-0.5 shadow-xs shrink-0 hover:rotate-3 transition-transform duration-300"
             />
           </div>
+
+          {/* Auto Logout Notification Banner */}
+          {autoLogoutNotice && (
+            <div className="bg-amber-50 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200 text-xs font-bold p-3.5 rounded-xl flex items-center justify-between gap-2 shadow-xs animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 animate-pulse" />
+                <span>{autoLogoutNotice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={clearAutoLogoutNotice}
+                className="text-[11px] font-extrabold text-amber-800 dark:text-amber-300 hover:underline shrink-0 cursor-pointer"
+              >
+                समजले (OK)
+              </button>
+            </div>
+          )}
 
           {/* Error Message Display with Shake Animation */}
           {errorMsg && (

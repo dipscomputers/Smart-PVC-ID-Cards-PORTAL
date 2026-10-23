@@ -19,11 +19,13 @@ export const FarmerIdPrintPortal: React.FC<FarmerIdPrintPortalProps> = ({
       id="farmer-print-portal-root"
       style={{
         position: 'fixed',
-        left: '-9999px',
+        left: '0px',
         top: '0px',
         width: '210mm',
         zIndex: -9999,
+        opacity: 1,
         pointerEvents: 'none',
+        overflow: 'hidden',
       }}
       aria-hidden="true"
     >
